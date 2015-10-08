@@ -44,12 +44,17 @@ abstract public class AdsRequest extends AdsData{
         this.commandId   = commandId;
         this.stateFlags  = new StateFlags(false, true, false);
     }
-            
+    
     @Override
-    public void read(Connection connection) throws IOException {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    public void read(Connection connection) throws IOException{
+        //nothing to read
     }
-
+    
+    @Override
+    public void write(Connection connection) throws IOException{
+        writeMetaData(connection);
+        writeData(connection);
+    }
     /**
      * @return the commandId
      */
@@ -69,11 +74,6 @@ abstract public class AdsRequest extends AdsData{
      */
     public StateFlags getStateFlags() {
         return stateFlags;
-    }
-    
-    @Override
-    public int size(){
-        return 0;
     }
     
     @Override

@@ -60,7 +60,21 @@ abstract public class IoLogical extends org.jpac.plc.IoLogical {
         super(containingModule, identifier, null, null, ioDirection);
         this.uri       = uri;
         setAddress(seizeAddress(uri));
-        getIOHandler();
+        switch(ioDirection){
+            case INPUT:
+                getIOHandler().registerInputSignal(this); 
+                break;
+            case OUTPUT:
+                getIOHandler().registerOutputSignal(this); 
+                break;
+            case INOUT:
+                getIOHandler().registerInputSignal(this); 
+                getIOHandler().registerOutputSignal(this); 
+                break;
+            default:
+                throw new WrongUseException("signal '" + getIdentifier() + "'  must be either input or output or both: ");
+        }        
+        
     }  
     
     /**

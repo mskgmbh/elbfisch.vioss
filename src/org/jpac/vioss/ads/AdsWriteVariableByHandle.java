@@ -36,6 +36,6 @@ public class AdsWriteVariableByHandle extends AdsWrite{
         super(IndexGroup.ADSIGRP_SYM_VALBYHND, handle, length, data);
     }
     public Data getData(){
-        return ((AdsWriteRequest)getAdsRequest()).getData();
-    }    
+        return ((AdsWriteRequest)adsRequest).getData();
+    }
 }

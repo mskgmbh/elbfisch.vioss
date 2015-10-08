@@ -33,28 +33,14 @@ import org.jpac.plc.Data;
  * @author berndschuster
  */
 public class AdsReadWrite extends AmsPacket{
-    private AdsReadWriteRequest  adsReadWriteRequest;
-    private AdsReadWriteResponse adsReadWriteResponse;
-
     
     public AdsReadWrite(IndexGroup indexGroup, int indexOffset, int readLength, int writeLength, Data responseData, Data requestData){
-        this.adsReadWriteRequest  = new AdsReadWriteRequest(indexGroup, indexOffset, readLength, writeLength, requestData);
-        this.adsReadWriteResponse = new AdsReadWriteResponse();
+        setAdsRequest(new AdsReadWriteRequest(indexGroup, indexOffset, readLength, writeLength, requestData));
+        setAdsResponse(new AdsReadWriteResponse(readLength));
     }
     
     public AdsReadWrite(IndexGroup indexGroup, int indexOffset){
         this(indexGroup, indexOffset, 0, 0, null, null);
-    }
-    
-    
-    @Override
-    public AdsRequest getAdsRequest() {
-        return adsReadWriteRequest;
-    }
-
-    @Override
-    public AdsResponse getAdsResponse() {
-        return adsReadWriteResponse;
     }
 
     public class AdsReadWriteRequest extends AdsRequest{
@@ -90,12 +76,6 @@ public class AdsReadWrite extends AmsPacket{
             connection.getOutputStream().write(writeData.getBytes(), 0, writeLength);
         }
         
-           @Override
-        public void write(Connection connection) throws IOException {
-            writeMetaData(connection);
-            writeData(connection);
-        }
-
         /**
          * @return the indexGroup
          */
@@ -168,7 +148,7 @@ public class AdsReadWrite extends AmsPacket{
 
         @Override
         public int size(){
-            return super.size() + IndexGroup.size() + INDEXOFFSETSIZE + READLENGTHSIZE + WRITELENGTHSIZE + getWriteLength();
+            return IndexGroup.size() + INDEXOFFSETSIZE + READLENGTHSIZE + WRITELENGTHSIZE + getWriteLength();
         }   
     } 
     
@@ -181,41 +161,20 @@ public class AdsReadWrite extends AmsPacket{
 
         public AdsReadWriteResponse(int length){
             super(length);
-        }
-
-        @Override
-        public void read(Connection connection) throws IOException {
-            super.readMetaData(connection);
-            if (getErrorCode() == AdsErrorCode.NoError){                
-                length = connection.getInputStream().readInt();
-                readData(connection);
-            }
+            data = new Data(new byte[length], Data.Endianness.LITTLEENDIAN);
         }
 
         @Override
         public int size(){
-            return super.size() + LENGTHSIZE + (data != null ? data.getBytes().length : 0);
+            return super.size() + LENGTHSIZE + length;
         }
 
-        /**
-         * @return the length
-         */
-        public int getLength() {
-            return length;
-        }
-
-        /**
-         * @return the data
-         */
-        public Data getData() {
-            return data;
-        }
-        
         @Override
         public void readMetaData(Connection connection) throws IOException{
             super.readMetaData(connection);
-            if (getErrorCode() == AdsErrorCode.NoError){
-                length = connection.getInputStream().readInt();
+            int returnedLength = connection.getInputStream().readInt();
+            if (getErrorCode() == AdsErrorCode.NoError && returnedLength != length){
+                throw new IOException("length returned by the plc (" + returnedLength + ") does not match expected length (" + length + ")");
             }
         }
 
@@ -225,6 +184,6 @@ public class AdsReadWrite extends AmsPacket{
                 data = new Data(new byte[length], Data.Endianness.LITTLEENDIAN);
             }
             connection.getInputStream().read(data.getBytes(), 0, length);
-        }
+        }        
     }    
 }

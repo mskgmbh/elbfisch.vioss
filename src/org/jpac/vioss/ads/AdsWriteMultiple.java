@@ -1,6 +1,6 @@
 /**
  * PROJECT   : Elbfisch - java process automation controller (jPac) 
- * MODULE    : AdsReadMultipeVariables.java (versatile input output subsystem)
+ * MODULE    : AdsWriteMultipeVariables.java (versatile input output subsystem)
  * VERSION   : -
  * DATE      : -
  * PURPOSE   : 
@@ -27,66 +27,52 @@ package org.jpac.vioss.ads;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import org.jpac.plc.Data;
 
 /**
  *
  * @author berndschuster
  */
-public class AdsReadMultipeVariables extends AdsReadWrite{
+public class AdsWriteMultiple extends AdsReadWrite{
     private static int LENGTHSIZE        = 4;
     private static int REQUESTHEADERSIZE = 16;
     private static int INT32SIZE         = 4;
     
-    private ArrayList<AmsPacket>              amsPackets;
+    private ArrayList<AmsPacket> amsPackets;
     
-    private AdsReadMultipleVariablesRequest  adsReadMultipleVariablesRequest;
-    private AdsReadMultipleVariablesResponse adsReadMultipleVariablesResponse;    
-    
-    public AdsReadMultipeVariables(){
-        super(IndexGroup.ADSIGRP_SUMUP_READ, 0);
+    public AdsWriteMultiple(){
+        super(IndexGroup.ADSIGRP_SUMUP_WRITE, 0);
         amsPackets = new ArrayList<AmsPacket>();
-        this.adsReadMultipleVariablesRequest  = new AdsReadMultipleVariablesRequest(amsPackets);
-        this.adsReadMultipleVariablesResponse = new AdsReadMultipleVariablesResponse(amsPackets);
+        setAdsRequest(new AdsWriteMultipleRequest(amsPackets));
+        setAdsResponse(new AdsWriteMultipleResponse(amsPackets));
     }  
     
     public void addAmsPacket(AmsPacket amsPacket){
         amsPackets.add(amsPacket);
     }
     
-    @Override
-    public AdsRequest getAdsRequest(){
-        return this.adsReadMultipleVariablesRequest;
-    }
-    
-    @Override
-    public AdsResponse getAdsResponse(){
-        return this.adsReadMultipleVariablesResponse;
+    public void clearAmsPackets(){
+        amsPackets.clear();
     }
 
-    public class AdsReadMultipleVariablesRequest extends AdsReadWrite.AdsReadWriteRequest{
+    public class AdsWriteMultipleRequest extends AdsReadWrite.AdsReadWriteRequest{
         private ArrayList<AmsPacket> amsPackets;
         
-        public AdsReadMultipleVariablesRequest(ArrayList<AmsPacket> amsPackets){
-            super(IndexGroup.ADSIGRP_SUMUP_READ, 0, 0, 0, null);
+        public AdsWriteMultipleRequest(ArrayList<AmsPacket> amsPackets){
+            super(IndexGroup.ADSIGRP_SUMUP_WRITE, 0, 0, 0, null);
             this.amsPackets = amsPackets;
         }
         
-        public void addAmsPacket(AmsPacket amsPacket){
-            amsPackets.add(amsPacket);
-        }
-
         @Override
         public void writeMetaData(Connection connection) throws IOException {            
-            int readLength = 0;
+            int readLength  = 0;
             int writeLength = 0;
+            setIndexOffset(amsPackets.size());
             for(AmsPacket ap: amsPackets){
-                readLength  += ap.getAdsResponse().size() - LENGTHSIZE;//length is not transmitted
+                readLength  += ap.getAdsResponse().size();
                 writeLength += ap.getAdsRequest().size();
             }
             setReadLength(readLength);
             setWriteLength(writeLength);
-            setIndexOffset(amsPackets.size());            
             super.writeMetaData(connection);
             for(AmsPacket aw: amsPackets){
                 aw.getAdsRequest().writeMetaData(connection);
@@ -110,17 +96,18 @@ public class AdsReadMultipeVariables extends AdsReadWrite{
         }   
     }
     
-    public class AdsReadMultipleVariablesResponse extends AdsReadWrite.AdsReadWriteResponse{
+    public class AdsWriteMultipleResponse extends AdsReadWrite.AdsReadWriteResponse{
         private int                  numberOfFailedAccesses;
         private ArrayList<AmsPacket> amsPackets;
         
-        public AdsReadMultipleVariablesResponse(ArrayList<AmsPacket> amsPackets){
+        public AdsWriteMultipleResponse(ArrayList<AmsPacket> amsPackets){
             super();
             this.amsPackets = amsPackets;
         }        
 
         @Override
         public void readMetaData(Connection connection) throws IOException{
+            setLength(computeExpectedLength());
             super.readMetaData(connection);
             if (length != amsPackets.size() * AdsErrorCode.size()){
                 throw new IOException("length of data block (" + length + ") does not match expected length (" + amsPackets.size() * AdsErrorCode.size() + ")");
@@ -135,21 +122,24 @@ public class AdsReadMultipeVariables extends AdsReadWrite{
         
         @Override
         public void readData(Connection connection) throws IOException {
-            //first read error codes
             for(AmsPacket aw: amsPackets){
                 aw.getAdsResponse().setErrorCode(AdsErrorCode.getValue(connection.getInputStream().readInt()));
                 if (aw.getAdsResponse().getErrorCode() != AdsErrorCode.NoError){
                     numberOfFailedAccesses++;
                 }
-            }
-            //then read data items
-            for(AmsPacket aw: amsPackets){
-                connection.getInputStream().read(aw.getAdsResponse().getData().getBytes(), 0, aw.getAdsResponse().getLength());
-            }
+            }                         
         }
         
         public int getNumberOfFailedAccesses(){
             return this.numberOfFailedAccesses;
+        }
+
+        protected int computeExpectedLength(){
+            int length = 0;
+            for (AmsPacket ap: amsPackets){
+                length += ap.getAdsResponse().size();
+            }
+            return length;
         }
     }   
 }

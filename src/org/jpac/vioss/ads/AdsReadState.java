@@ -36,24 +36,10 @@ public class AdsReadState extends AmsPacket{
     
     public AdsReadState(){
         super();
+        setAdsRequest(new AdsReadStateRequest());
+        setAdsResponse(new AdsReadStateResponse());
     }
     
-    @Override
-    public AdsRequest getAdsRequest() {
-        if (adsReadStateRequest == null){
-            adsReadStateRequest = new AdsReadStateRequest();
-        }
-        return adsReadStateRequest;
-    }
-
-    @Override
-    public AdsResponse getAdsResponse() {
-        if (adsReadStateResponse == null){
-            adsReadStateResponse = new AdsReadStateResponse();
-        }
-        return adsReadStateResponse;
-    }
-
     public class AdsReadStateRequest extends AdsRequest{
 
         public AdsReadStateRequest(){
@@ -66,46 +52,42 @@ public class AdsReadState extends AmsPacket{
         }
 
         @Override
-        public int size(){
-            return super.size();
-        }   
-
-        @Override
         public void writeMetaData(Connection connection) throws IOException {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            //nothing to write
         }
 
         @Override
         public void writeData(Connection connection) throws IOException {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            //nothing to write
+        }
+
+        @Override
+        public int size() {
+            return 0;
         }
     } 
     
     public class AdsReadStateResponse extends AdsResponse{
+        private final static int ADSSTATESIZE = 2;
+
         protected AdsState     adsState;
         protected DeviceState  deviceState;
 
         public AdsReadStateResponse(){
             super();
-            adsState = AdsState.Undefined;
+            adsState    = AdsState.Undefined;
             deviceState = new DeviceState();
         }
 
         @Override
-        public void read(Connection connection) throws IOException {
-            super.read(connection);
+        public void readData(Connection connection) throws IOException {
             adsState = AdsState.getValue(connection.getInputStream().readShort());
             deviceState.read(connection);
         }
 
         @Override
         public int size(){
-            return super.size() + 4;
-        }
-
-        @Override
-        public void readData(Connection connection) throws IOException {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            return super.size() + ADSSTATESIZE + DeviceState.size();
         }
     }    
 }

@@ -41,8 +41,8 @@ import org.jpac.vioss.LittleEndianDataOutputStream;
 public class Connection{
     static Logger Log = Logger.getLogger("jpac.plc");
     
-    static  final int                    ADSPORT           = 0xBF02;
-    static  final int                    SOCKETTIMEOUT     = 500; //ms
+    static  final int                    ADSPORT           = 0xBF02; //48898
+    static  final int                    SOCKETTIMEOUT     = 1000;   //ms
     static  final String                 AMSNETIDEXTENSION = ".1.1";
     static  final AmsPortNr              DEFAULTAMSPORTNR  = AmsPortNr.PlcRuntimeSystem1;
     
@@ -88,7 +88,7 @@ public class Connection{
      */
     public Connection(String host) throws IOException, InvalidAddressException {
         this.host       = host;
-        targetAmsNetId  = new AmsNetId(host + AMSNETIDEXTENSION);;
+        targetAmsNetId  = new AmsNetId(InetAddress.getByName(host).getHostAddress() + AMSNETIDEXTENSION);;
         targetAmsPortNr = DEFAULTAMSPORTNR;
         localAmsNetId   = new AmsNetId(InetAddress.getLocalHost().getHostAddress() + AMSNETIDEXTENSION);
         localAmsPortNr  = AmsPortNr.Local;

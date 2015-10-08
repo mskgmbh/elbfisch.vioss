@@ -37,33 +37,22 @@ import org.jpac.plc.PlcString;
  */
 public class AdsGetSymbolHandleByName extends AdsReadWrite{
     private static final int INTLENGTH = 4;
-    
-    private Long             handle;
-    private String           variableName;
-    
+  
     public AdsGetSymbolHandleByName(String variableName){
         super(IndexGroup.ADSIGRP_SYM_HNDBYNAME, 0);
-        this.variableName = variableName;
-        ((AdsReadWriteRequest)getAdsRequest()).setWriteLength(variableName.length());
         Data writeData = new Data(new byte[variableName.length()], Data.Endianness.LITTLEENDIAN);
         try{writeData.setSTRING(0, new PlcString(variableName, variableName.length()));}catch(Exception exc){/*cannot happen*/}
+        ((AdsReadWriteRequest)getAdsRequest()).setWriteLength(variableName.length());
         ((AdsReadWriteRequest)getAdsRequest()).setWriteData(writeData);
         ((AdsReadWriteRequest)getAdsRequest()).setReadLength(INTLENGTH);//handle is an int value
-    }
-    
-    @Override
-    public void transact(Connection connection) throws IOException, WrongUseException{
-       try{
-           super.transact(connection);
-           handle = ((AdsReadWriteResponse)getAdsResponse()).getData().getDWORD(0);
-       }
-       catch(AddressException exc){/*cannot happen*/}
-       catch(IOException exc){
-           throw new IOException("error while retrieving handle for symbol '" + variableName + "'", exc);
-       }
-    }
-    
+        
+        Data readData  = new Data(new byte[INTLENGTH], Data.Endianness.LITTLEENDIAN);
+        ((AdsReadWriteResponse)getAdsResponse()).setLength(INTLENGTH);//handle is an int value
+        ((AdsReadWriteResponse)getAdsResponse()).setData(readData);
+    }    
     public Long getHandle(){
+        Long handle = null;
+        try{handle = ((AdsReadWriteResponse)getAdsResponse()).getData().getDWORD(0);}catch(AddressException exc){/*cannot happen*/}
         return handle;
     }
 }

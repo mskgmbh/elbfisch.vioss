@@ -33,31 +33,16 @@ import org.jpac.plc.Data;
  * @author berndschuster
  */
 public class AdsRead extends AmsPacket{
-    AdsReadRequest  adsReadRequest;
-    AdsReadResponse adsReadResponse;
-    IndexGroup      indexGroup;
-    int             indexOffset;
-    int             length;
     
     public AdsRead(IndexGroup indexGroup, int indexOffset, int length){
-        this.indexGroup      = indexGroup;
-        this.indexOffset     = indexOffset;
-        this.length          = length;
-        this.adsReadRequest  = new AdsReadRequest(indexGroup, indexOffset, length);
-        this.adsReadResponse = new AdsReadResponse(length);
+        setAdsRequest(new AdsReadRequest(indexGroup, indexOffset, length));
+        setAdsResponse(new AdsReadResponse(length));
     }
     
-    @Override
-    public AdsRequest getAdsRequest() {
-        return adsReadRequest;
-    }
-
-    @Override
-    public AdsResponse getAdsResponse() {
-        return adsReadResponse;
-    }
-
     public class AdsReadRequest extends AdsRequest{
+        private final static int INDEXOFFSETSIZE = 4;
+        private final static int LENGTHSIZE      = 4;
+        
         protected IndexGroup indexGroup;
         protected int        indexOffset;
         protected int        length;        
@@ -69,6 +54,18 @@ public class AdsRead extends AmsPacket{
             this.indexOffset = indexOffset;
             this.length      = length;
         }
+        
+        public void setIndexGroup(IndexGroup indexGroup){
+            this.indexGroup = indexGroup;
+        }
+
+        public void setIndexOffset(int indexOffset){
+            this.indexOffset = indexOffset;
+        }
+
+        public void setLength(int length){
+            this.length = length;
+        }
 
         @Override
         public void write(Connection connection) throws IOException {
@@ -77,7 +74,7 @@ public class AdsRead extends AmsPacket{
 
         @Override
         public int size(){
-            return super.size() + IndexGroup.size() + 8;
+            return IndexGroup.size() + INDEXOFFSETSIZE + LENGTHSIZE;
         }   
 
         @Override
@@ -94,7 +91,7 @@ public class AdsRead extends AmsPacket{
     } 
     
     public class AdsReadResponse extends AdsResponse{
-
+        private final static int LENGTHSIZE = 4;
         public AdsReadResponse(int length){
             super(length);
             this.length = length;
@@ -102,31 +99,22 @@ public class AdsRead extends AmsPacket{
         }
 
         @Override
-        public void read(Connection connection) throws IOException {
-            super.read(connection);
+        protected void readMetaData(Connection connection) throws IOException{
+            super.readMetaData(connection);
             int actualLength = connection.getInputStream().readInt();             
             if (actualLength != length){
                 throw new IOException("data length (" + actualLength + ") does not match expected length (" + length + ")");
             }
-            readData(connection);
-        }
-
-        @Override
-        public void readData(Connection connection) throws IOException {
-            connection.getInputStream().read(data.getBytes(), 0, length);
-        }
-
-        public int getLength() {
-            return length;
-        }
-
-        public Data getData() {
-            return data;
         }
         
         @Override
+        protected void readData(Connection connection) throws IOException {
+            connection.getInputStream().read(data.getBytes(), 0, length);
+        }
+
+        @Override
         public int size(){
-            return super.size() + 4 + data.getBytes().length;
+            return super.size() + LENGTHSIZE + length;
         }
     }    
 }

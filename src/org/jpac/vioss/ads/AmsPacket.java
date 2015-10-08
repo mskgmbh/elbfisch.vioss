@@ -87,10 +87,22 @@ abstract public class AmsPacket {
         return responseAmsHeader;
     }
 
+    public AdsRequest getAdsRequest(){
+        return adsRequest;
+    }
+    
+    public AdsResponse getAdsResponse(){
+        return adsResponse;
+    }
+
     protected void setAdsRequest(AdsRequest adsRequest){
         this.adsRequest = adsRequest;
     }
     
+    protected void setAdsResponse(AdsResponse adsResponse){
+        this.adsResponse = adsResponse;
+    }
+
     public void write(Connection connection) throws IOException, WrongUseException{
        //initialize headers
        getRequestAmsTcpHeader().setLength(AmsHeader.size() + getAdsRequest().size());
@@ -142,11 +154,5 @@ abstract public class AmsPacket {
     public void transact(Connection connection) throws IOException, WrongUseException{
         write(connection);
         read(connection);
-    }
-    
-    /**
-     * @return the adsRequest
-     */
-    abstract public AdsRequest  getAdsRequest();
-    abstract public AdsResponse getAdsResponse();
+    }    
 }

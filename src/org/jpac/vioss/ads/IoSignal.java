@@ -1,6 +1,6 @@
 /**
  * PROJECT   : Elbfisch - java process automation controller (jPac) 
- * MODULE    : AdsReadVariableByHandle.java (versatile input output subsystem)
+ * MODULE    : IoSignal.java (versatile input output subsystem)
  * VERSION   : -
  * DATE      : -
  * PURPOSE   : 
@@ -22,18 +22,15 @@
  * You should have received a copy of the GNU General Public License
  * along with the jPac If not, see <http://www.gnu.org/licenses/>.
  */
-
 package org.jpac.vioss.ads;
 
 /**
  *
  * @author berndschuster
  */
-public class AdsReadVariableByHandle extends AdsRead{
-    public AdsReadVariableByHandle(long handle, int length){
-        super(IndexGroup.ADSIGRP_SYM_VALBYHND, (int)handle, length);
-    }  
-    public void setHandle(Long handle){
-        ((AdsReadRequest)getAdsRequest()).setIndexOffset(handle.intValue());
-    }
+public interface IoSignal extends org.jpac.plc.IoSignal{
+    public AdsGetSymbolHandleByName getAdsGetSymbolHandleByName();
+    public AdsReadVariableByHandle  getAdsReadVariableByHandle();
+    public AdsWriteVariableByHandle getAdsWriteVariableByHandle();
+    public AdsReleaseHandle         getAdsReleaseHandle();
 }

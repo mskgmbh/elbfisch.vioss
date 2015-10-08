@@ -98,11 +98,16 @@ public class AdsDeviceInfo extends AmsPacket{
 
         public AdsDeviceInfoRequest(){
             super(CommandId.AdsReadDeviceInfo);
-        }
-        
+        }        
+
         @Override
-        public void read(Connection connection) throws IOException {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        public void writeMetaData(Connection connection) throws IOException {
+            //nothing to write
+        }
+
+        @Override
+        public void writeData(Connection connection) throws IOException {
+            //nothing to write
         }
 
         @Override
@@ -111,36 +116,24 @@ public class AdsDeviceInfo extends AmsPacket{
         }
 
         @Override
-        public int size(){
-            return super.size();
-        }
-
-        @Override
-        public void writeMetaData(Connection connection) throws IOException {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-        }
-
-        @Override
-        public void writeData(Connection connection) throws IOException {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        public int size() {
+           return 0;
         }
     } 
     
     public class AdsDeviceInfoResponse extends AdsResponse{
+        private final static int MAJORVERSIONSIZE = 1;
+        private final static int MINORVERSIONSIZE = 1;
+        private final static int VERSIONBUILDSIZE = 2;
+        private final static int DEVICENAMESIZE   = 16;
 
         public AdsDeviceInfoResponse(){
             super();
         }
 
         @Override
-        public void read(Connection connection) throws IOException {
-            byte[] dn = new byte[16];
-            
-            super.read(connection);
-            if (getErrorCode() != AdsErrorCode.NoError){
-                connection.getInputStream().skip(connection.getInputStream().available());
-                throw new IOException("Ads error : " + getErrorCode());
-            }
+        public void readData(Connection connection) throws IOException {
+            byte[] dn = new byte[16];            
             majorVersion = 0xff   & connection.getInputStream().read();
             minorVersion = 0xff   & connection.getInputStream().read();
             versionBuild = 0xffff & connection.getInputStream().readShort();
@@ -152,15 +145,10 @@ public class AdsDeviceInfo extends AmsPacket{
             deviceName = sb.toString();
             if (Log.isDebugEnabled())Log.debug("  " + this);            
         }
-
-        @Override
-        public void readData(Connection connection) throws IOException {
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-        }
         
         @Override
         public int size(){
-            return super.size() + 20;
+            return super.size() + MAJORVERSIONSIZE + MINORVERSIONSIZE + VERSIONBUILDSIZE + DEVICENAMESIZE;
         }
     }  
 }

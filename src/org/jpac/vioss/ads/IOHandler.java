@@ -25,6 +25,7 @@
 
 package org.jpac.vioss.ads;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
@@ -32,8 +33,13 @@ import org.jpac.Address;
 import org.jpac.AsynchronousTask;
 import org.jpac.InconsistencyException;
 import org.jpac.Module;
+import org.jpac.NumberOutOfRangeException;
 import org.jpac.ProcessException;
+import org.jpac.SignalAccessException;
 import org.jpac.Timer;
+import org.jpac.WrongUseException;
+import org.jpac.plc.AddressException;
+import static org.jpac.vioss.IOHandler.Log;
 import org.jpac.vioss.IllegalUriException;
 
 /**
@@ -41,117 +47,238 @@ import org.jpac.vioss.IllegalUriException;
  * @author berndschuster
  */
 public class IOHandler extends org.jpac.vioss.IOHandler{
-    private final static String HANDLEDSCHEME = "ADS";
-    
-    public enum State {UNDEFINED, CONNECTING, GETTINGHANDLES, TRANSCEIVING, RELEASINGHANDLES, STOPPED};
-    
-    private final static int    TRANSMISSIONTIMEOUT = 1000;//ms
-    private final static int    CONNECTIONRETRYTIME = 1000;//ms 
-         
-    private Integer assignedChunkOfData;
-        
-    private boolean inputDataValid;
-    
-    private InputOutputProcessImageRunner inputOutputProcessImageRunner;
-    
-    private Timer   inputOutputWatchdog;
-        
-    private String  toString;
-    
+    private final static String  HANDLEDSCHEME       = "ADS";
+    private final static int     TRANSMISSIONTIMEOUT = 1000;//ms
+    private final static int     CONNECTIONRETRYTIME = 1000;//ms         
 
+    public enum State            {IDLE, CONNECTING, TRANSCEIVING, CLOSINGCONNECTION, STOPPED};  
+    
+    private State                state;
+    private Connection           connection;
+    private ConnectionRunner     connectionRunner;
+    private boolean              connected;
+    private boolean              connecting;
+    private AdsReadWriteMultiple retrieveAdsVariableHandlesByName;
+    private AdsReadMultiple      readVariablesByHandle;
+    private AdsWriteMultiple     writeVariablesByHandle;
+    private AdsWriteMultiple     releaseHandles;
+        
     public IOHandler(URI uri) throws IllegalUriException {
         super(uri);
         if (!getHandledScheme().equals(uri.getScheme().toUpperCase())){
             throw new IllegalUriException("scheme '" + uri.getScheme() + "' not handled by " + toString());
-        }       
-        this.inputOutputWatchdog   = new Timer();
+        }
+        connectionRunner = new ConnectionRunner(this + " connection runner");
+        state            = State.IDLE;
     }
 
     @Override
     public void run(){
-        if (!isProcessingAborted()){
-            //invoke data interchange
-            inputOutputProcessImage();
+        boolean done = false;
+        try{
+            switch(state){
+                case IDLE:
+                    connected  = false;
+                    connecting = false;
+                    state      = State.CONNECTING;
+                    //connect right away
+                case CONNECTING:
+                    connecting();
+                    if (connected){
+                        //retrieve ads handles
+                        retrieveAdsVariableHandlesByName.transact(connection);
+                        assignHandlesToInputSignals();
+                        state = State.TRANSCEIVING;
+                    }
+                    break;
+                case TRANSCEIVING:
+                    try{
+                        done = transceiving();
+                    }
+                    catch(IOException exc){
+                        Log.error("Error: ", exc);
+                        state      = State.IDLE;
+                    }
+                    break;
+                case CLOSINGCONNECTION:
+                case STOPPED:
+                    //do nothing
+                    break;                        
+            }
+        }
+        catch(Exception exc){
+            Log.error("Error:", exc);
+            state = State.STOPPED;//stop processing
+        }
+        catch(Error err){
+            Log.error("Error:", err);
+            state = State.STOPPED;//stop processing
+        }
+        finally{
+            if (state == State.STOPPED){
+                //close connection, if open
+                if (connected){
+                    try{connection.close();}catch(Exception ex){/*ignore*/}
+                    connected = false;
+                }                
+            }
         }
     }
     
-    protected boolean inputOutputProcessImage() {
-        boolean inputOutputFinished = false;
+    @Override
+    public void prepare() {
         try{
-            inputOutputFinished = inputOutputProcessImageRunner.isFinished();
-            if (inputOutputFinished){
-                //check, if the inputProcessImageRunner has fetched an actual process image, yet
-                inputDataValid = inputOutputProcessImageRunner.isInputDataValid();//only valid in finished state of the runner !
-                if (inputDataValid){
-                    //if so, make a copy of the data for further processing
-                    // TODO replace : getLastValidInputData().copy(getInputData());
-                    //and transfer it to the connected input signals
-                    seizeSignalsFromInputProcessImage();
-                }
-                //transfer actual states of output signals to the output image
-                putSignalsToOutputProcessImage();
-                //and prepare it for transmission to the plc
-                //TODO replace : if (getOutputData() != null){
-                //                    getOutputData().copy(getPendingOutputData());
-                //                 }
-                //Finally restart the runner to let it transceive the process images (in/out)
-                //HINT: First transmission after connection is not supervised by this implementation
-                inputOutputProcessImageRunner.start();
-                if (inputOutputProcessImageRunner.state == State.TRANSCEIVING){
-                    //retrigger watchdog for process image transmission 
-                    inputOutputWatchdog.start(TRANSMISSIONTIMEOUT * Module.ms);
+            Log.info("starting up " + this);
+            //collect signals to be transceived ...
+            writeVariablesByHandle           = new AdsWriteMultiple();
+            readVariablesByHandle            = new AdsReadMultiple();
+            retrieveAdsVariableHandlesByName = new AdsReadWriteMultiple();
+            releaseHandles                   = new AdsWriteMultiple();
+            for (org.jpac.plc.IoSignal ios: getInputSignals()){
+                retrieveAdsVariableHandlesByName.addAdsReadWrite(((IoSignal)ios).getAdsGetSymbolHandleByName());
+                releaseHandles.addAmsPacket(((IoSignal)ios).getAdsReleaseHandle());
+                readVariablesByHandle.addAmsPacket(((IoSignal)ios).getAdsReadVariableByHandle());
+            }
+            for (org.jpac.plc.IoSignal ios: getOutputSignals()){
+                if (!retrieveAdsVariableHandlesByName.getAdsReadWrites().contains(ios)){//avoid int/out signals to be collected twice
+                    retrieveAdsVariableHandlesByName.addAdsReadWrite(((IoSignal)ios).getAdsGetSymbolHandleByName());
+                    releaseHandles.addAmsPacket(((IoSignal)ios).getAdsReleaseHandle());
                 }
             }
-            else{
-                if (inputOutputProcessImageRunner.state == State.TRANSCEIVING && !inputOutputWatchdog.isRunning()){
-                    Log.error("process image transmission timed out. Reestablishing connection ...");
-                    inputOutputProcessImageRunner = new InputOutputProcessImageRunner(this.toString());
-                    inputOutputProcessImageRunner.start();
-                }
-            }
-        }
-        catch(Error exc){
-            Log.error("Error: ", exc);
+            setProcessingStarted(true);        
         }
         catch(Exception exc){
-            Log.error("Error: ", exc);            
+            Log.error("Error: ", exc);
         }
-        return inputOutputFinished;
+        catch(Error err){
+            Log.error("Error: ", err);
+        }
     }
 
+    @Override
+    public void stop() {
+        try{
+            Log.info("shutting down " + this);
+            state = State.CLOSINGCONNECTION;
+            connectionRunner.terminate();
+            if (connected){
+                //release ads handles
+                releaseHandles.transact(connection);
+                //and close connection to plc
+                connection.close();
+                connected = false;
+            }
+        }
+        catch(Exception exc){
+            Log.error("Error: ", exc);
+        }
+        catch(Error err){
+            Log.error("Error: ", err);
+        }
+        finally{
+            if(connected){
+                try{connection.close();}catch(Exception exc){/*ignore*/}
+            }
+            connected = false;            
+            state = State.STOPPED;
+        }
+    }
+
+    /**
+     * is called in every cycle while in state CONNECTING
+     */
+    protected boolean connecting() throws WrongUseException, InconsistencyException{
+        boolean done = false;
+        if (!connected){
+            if (!connecting){
+                connectionRunner.start();
+                connecting = true;
+            }
+            else{
+                //connect to plc in progress
+                connected  = connectionRunner.isFinished();
+                if (connected){
+                    connection = connectionRunner.getConnection();
+                    connecting = false;
+                }
+            }
+        }
+        else{
+            throw new InconsistencyException("might not be called in connected state");
+        }
+        return done;
+    };
+    
+    /**
+     * is called in every cycle while in state TRANSCEIVING
+     */
+    protected boolean transceiving() throws IOException, WrongUseException, SignalAccessException, AddressException, NumberOutOfRangeException{
+        boolean done = false;
+        readVariablesByHandle.transact(connection);
+        //propagate input signals
+        for(org.jpac.plc.IoSignal ios: getInputSignals()){
+            ios.checkIn();
+        }
+        //prepare output signals for propagation to plc
+        writeVariablesByHandle.clearAmsPackets();
+        for(org.jpac.plc.IoSignal ios: getOutputSignals()){
+            if (ios.isToBePutOut()){
+                ios.checkOut();
+                writeVariablesByHandle.addAmsPacket(((IoSignal)ios).getAdsWriteVariableByHandle());
+            }
+        }
+        writeVariablesByHandle.transact(connection);
+        //denote signals as being properly transmitted
+        for(org.jpac.plc.IoSignal ios: getOutputSignals()){
+            if (ios.isToBePutOut()){
+                if (((IoSignal)ios).getAdsWriteVariableByHandle().getAdsResponse().getErrorCode() == AdsErrorCode.NoError){
+                    ios.resetToBePutOut();
+                }
+            }
+        }
+        done = true;
+        return done;
+    };
+    
+    protected boolean closingConnection() throws IOException, WrongUseException{
+        boolean done = false;
+        try{
+        //release ads handles
+        releaseHandles.transact(connection);
+        //and close connection to plc
+        connection.close();
+        connected = false;
+        }
+        finally{
+            if(connected){
+                try{connection.close();}catch(Exception exc){/*ignore*/}
+            }
+            connected = false;
+        }
+        return done;
+    };
+    
+    protected void assignHandlesToInputSignals(){
+        for (org.jpac.plc.IoSignal ios: getInputSignals()){
+            ((IoSignal)ios).getAdsReadVariableByHandle().setHandle(((IoSignal)ios).getAdsGetSymbolHandleByName().getHandle());
+        }
+    }
+    
     @Override
     public boolean handles(Address address, URI uri) {
         boolean isHandledByThisInstance = false;
         try{
             isHandledByThisInstance  = uri != null;
             isHandledByThisInstance &= this.getUri().getScheme().equals(uri.getScheme());
-            InetAddress[] ia =  InetAddress.getAllByName(this.getUri().getHost());
-            InetAddress[] ib =  InetAddress.getAllByName(uri.getHost());
+            InetAddress[] ia         = InetAddress.getAllByName(this.getUri().getHost());
+            InetAddress[] ib         = InetAddress.getAllByName(uri.getHost());
             isHandledByThisInstance &= ia[0].equals(ib[0]);
             isHandledByThisInstance &= this.getUri().getPort() == uri.getPort();
         }
         catch(UnknownHostException exc){};
         return isHandledByThisInstance;
     }
-
-    @Override
-    public void prepare() {
-        setProcessingStarted(true);
-        Log.info("starting up " + this);
-        try{
-            inputOutputProcessImageRunner = new InputOutputProcessImageRunner(this.toString());
-            inputOutputProcessImageRunner.start();
-        }
-        catch(Exception exc){
-            Log.error("Error:", exc);
-        }
-    }
-
-    @Override
-    public void stop() {
-        Log.info("shutting down " + this);
-    }
- 
+    
     @Override
     public String getHandledScheme() {
         return HANDLEDSCHEME;
@@ -159,96 +286,37 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
 
     @Override
     public boolean isFinished() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        return state == State.STOPPED;
     }
     
-    class InputOutputProcessImageRunner extends AsynchronousTask{
-        private boolean            connected;
-
-        private boolean            inputDataValid;
-
-        private boolean            outputDataValid;
-        
-        private Connection         connection;
-        public  State        state;
-        
-        public  int                count;
-        
-        
-        public InputOutputProcessImageRunner(String instanceIdentifier){
-            super(instanceIdentifier);
-            this.state = State.CONNECTING;
+    class ConnectionRunner extends AsynchronousTask{ 
+        private Connection           connection;
+        public ConnectionRunner(String identifier){
+            super(identifier);
         }
         
         @Override
-        public void doIt() throws ProcessException {            
-            try{
-                outputDataValid = false;//only valid during finished state of the runner
-                inputDataValid  = false;//only valid during finished state of the runner
-                do{ 
-                    if (!connected){
-                        state = State.CONNECTING;
-                    }
-                    switch(state){
-                        case CONNECTING:
-                            Log.info("establishing connection ...");
-                            do{
-                                try{
-                                    connection = new Connection(getUri().getHost());
-                                    connected  = true;
-                                }
-                                catch(Exception exc){
-                                    Thread.sleep(CONNECTIONRETRYTIME);
-                                }
-                            }
-                            while(!connected);
-                            Log.info("... connection established");
-                            state = State.GETTINGHANDLES;
-                            break;
-                        case GETTINGHANDLES:
-                            Log.info("getting handles ...");
-                            //must be implemented
-                            state = State.TRANSCEIVING;
-                            Log.info("... handles received");
-                            break;
-                        case TRANSCEIVING:
-                            //do transceiving here
-                            outputDataValid = true;
-                            inputDataValid = true;
-                            break;
-                        case RELEASINGHANDLES:
-                            Log.info("disconnecting ...");
-                            //must be implemented
-                            //deregistering handles
-                            state = State.STOPPED;
-                            Log.info("... disconnected");
-                            break;
-                        case STOPPED:
-                            throw new InconsistencyException(this + " might not be called in STOPPED state");
-                    }
+        public void doIt() throws ProcessException {
+            boolean connected = false;
+            Log.info("establishing connection ...");
+            do{
+                try{
+                    connection = new Connection(getUri().getHost());
+                    connected  = true;
                 }
-                while(!inputDataValid || !outputDataValid);
+                catch(Exception exc){
+                    if (Log.isDebugEnabled())Log.error("Error:", exc);
+                    try{Thread.sleep(CONNECTIONRETRYTIME);}catch(InterruptedException ex){/*cannot happen*/};
+                }
             }
-            catch(Error exc){
-                Log.error("Error", exc);
-                connected = false;
-                outputDataValid = false;
-                inputDataValid  = false;
-            }
-            catch(Exception exc){
-                Log.error("Error", exc);
-                connected = false;
-                outputDataValid = false;
-                inputDataValid  = false;
+            while(!connected && !isTerminated());
+            if (connected){
+                Log.info("... connection established");            
             }
         }
         
-        public State getState(){
-            return this.state;
+        public Connection getConnection(){
+            return this.connection;
         }
-        
-        public boolean isInputDataValid(){
-            return this.inputDataValid;
-        }
-    }
+    }    
 }

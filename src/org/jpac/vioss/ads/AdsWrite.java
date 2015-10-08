@@ -33,30 +33,14 @@ import org.jpac.plc.Data;
  * @author berndschuster
  */
 public class AdsWrite extends AmsPacket{
-    AdsWriteRequest  adsReadRequest;
-    AdsWriteResponse adsReadResponse;
-    IndexGroup       indexGroup;
-    long             indexOffset;
-    int              length;
+    private final static int INDEXOFFSETSIZE = 4;
+    private final static int LENGTHSIZE      = 4;
     
     public AdsWrite(IndexGroup indexGroup, long indexOffset, int length, Data data){
-        this.indexGroup      = indexGroup;
-        this.indexOffset     = indexOffset;
-        this.length          = length;
-        this.adsReadRequest  = new AdsWriteRequest(indexGroup, indexOffset, length, data);
-        this.adsReadResponse = new AdsWriteResponse();  
+        setAdsRequest(new AdsWriteRequest(indexGroup, indexOffset, length, data));
+        setAdsResponse(new AdsWriteResponse());  
     }
-    
-    @Override
-    public AdsRequest getAdsRequest() {
-        return adsReadRequest;
-    }
-
-    @Override
-    public AdsResponse getAdsResponse() {
-        return adsReadResponse;
-    }
-    
+        
     public class AdsWriteRequest extends AdsRequest{
         protected IndexGroup indexGroup;
         protected long       indexOffset;
@@ -83,24 +67,27 @@ public class AdsWrite extends AmsPacket{
         public void writeData(Connection connection) throws IOException {
             connection.getOutputStream().write(data.getBytes(), 0, length);
         }
+        
+        public void setIndexGroup(IndexGroup indexGroup){
+            this.indexGroup = indexGroup;
+        }
 
-        @Override
-        public void write(Connection connection) throws IOException {
-            writeMetaData(connection);
-            writeData(connection);
+        public void setIndexOffset(int indexOffset){
+            this.indexOffset = indexOffset;
+        }
+
+        public void setLength(int length){
+            this.length = length;
         }
         
-        public void setData(Data data){
-            this.data = data;
-        }
-
+        
         public Data getData(){
-            return data;
+            return this.data;
         }
-
+        
         @Override
         public int size(){
-            return super.size() + IndexGroup.size() + 8 + (data != null ? data.getBytes().length : 0);
+            return IndexGroup.size() + INDEXOFFSETSIZE + LENGTHSIZE + length;
         }   
     } 
     
@@ -112,22 +99,6 @@ public class AdsWrite extends AmsPacket{
 
         public AdsWriteResponse(int length){
             super(length);
-        }
-
-        @Override
-        public void read(Connection connection) throws IOException {
-            super.read(connection);
-            readData(connection);
-        }
-
-        @Override
-        public int size(){
-            return super.size();
-        }
-
-        @Override
-        public void readData(Connection connection) throws IOException {
-            //nothing to read
         }
     }    
 }

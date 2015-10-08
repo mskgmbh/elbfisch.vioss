@@ -30,6 +30,7 @@ import org.apache.log4j.Logger;
 import org.jpac.AbstractModule;
 import org.jpac.plc.Address;
 import org.jpac.InconsistencyException;
+import org.jpac.IndexOutOfRangeException;
 import org.jpac.SignalAlreadyExistsException;
 import org.jpac.WrongUseException;
 import org.jpac.plc.IoDirection;
@@ -60,7 +61,20 @@ abstract public class IoSignedInteger extends org.jpac.plc.IoSignedInteger {
         super(containingModule, identifier, null, null, ioDirection);
         this.uri       = uri;
         setAddress(seizeAddress(uri));
-        getIOHandler();
+        switch(ioDirection){
+            case INPUT:
+                getIOHandler().registerInputSignal(this); 
+                break;
+            case OUTPUT:
+                getIOHandler().registerOutputSignal(this); 
+                break;
+            case INOUT:
+                getIOHandler().registerInputSignal(this); 
+                getIOHandler().registerOutputSignal(this); 
+                break;
+            default:
+                throw new WrongUseException("signal '" + getIdentifier() + "'  must be either input or output or both: ");
+        }        
     }  
     
     /**

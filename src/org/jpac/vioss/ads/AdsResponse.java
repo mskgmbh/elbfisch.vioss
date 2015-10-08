@@ -43,7 +43,9 @@ abstract public class AdsResponse extends AdsData{
     }
     
     public AdsResponse(int length){
-        this.length = length;
+        this.errorCode = AdsErrorCode.NoError;
+        this.length    = length;
+        this.data      = null;
     }
             
     @Override
@@ -62,7 +64,11 @@ abstract public class AdsResponse extends AdsData{
     protected void readMetaData(Connection connection) throws IOException{
         errorCode = AdsErrorCode.getValue(connection.getInputStream().readInt());        
     }
-       
+
+    protected void readData(Connection connection) throws IOException{
+        //nothing to read
+    }
+    
     @Override
     public void write(Connection connection) throws IOException{
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
@@ -103,7 +109,5 @@ abstract public class AdsResponse extends AdsData{
     @Override
     public String toString(){
         return getClass().getSimpleName() + "(" + errorCode + ")";
-    }
-    
-    abstract public void readData(Connection connection) throws IOException;
+    }    
 }

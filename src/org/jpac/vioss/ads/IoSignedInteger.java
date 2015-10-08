@@ -28,6 +28,7 @@ package org.jpac.vioss.ads;
 import java.net.URI;
 import org.jpac.AbstractModule;
 import org.jpac.InconsistencyException;
+import org.jpac.IndexOutOfRangeException;
 import org.jpac.NumberOutOfRangeException;
 import org.jpac.SignalAccessException;
 import org.jpac.SignalAlreadyExistsException;
@@ -42,7 +43,7 @@ import org.jpac.plc.IoDirection;
  *
  * @author berndschuster
  */
-public class IoSignedInteger extends org.jpac.vioss.IoSignedInteger{
+public class IoSignedInteger extends org.jpac.vioss.IoSignedInteger implements IoSignal{
     private final static int         SIGNEDINTEGERSIZE = 4;
     
     private String                   plcIdentifier;
@@ -50,31 +51,21 @@ public class IoSignedInteger extends org.jpac.vioss.IoSignedInteger{
     private AdsReleaseHandle         adsReleaseHandle;
     private AdsReadVariableByHandle  adsReadVariableByHandle;
     private AdsWriteVariableByHandle adsWriteVariableByHandle;
+    private boolean                  checkInFaultLogged;
+    private boolean                  checkOutFaultLogged;
     
     public IoSignedInteger(AbstractModule containingModule, String identifier, URI uri, IoDirection ioDirection) throws SignalAlreadyExistsException, InconsistencyException, WrongUseException{
         super(containingModule, identifier, uri, ioDirection);
         this.plcIdentifier = uri.getPath().substring(1);//path starts with a slash "/<plcIdentifier>"
-        switch(ioDirection){
-            case INPUT:
-                getIOHandler().registerInputSignal(this); 
-                break;
-            case OUTPUT:
-                getIOHandler().registerOutputSignal(this); 
-                break;
-            case INOUT:
-                getIOHandler().registerInputSignal(this); 
-                getIOHandler().registerOutputSignal(this); 
-                break;
-            default:
-                throw new WrongUseException("signal '" + getIdentifier() + "'  must be either input or output or both: ");
-        }
+        this.checkInFaultLogged  = false;
+        this.checkOutFaultLogged = false;
     }  
         
     @Override
     public void checkIn() throws SignalAccessException, AddressException, NumberOutOfRangeException{
-        Integer intVal = null;
-        if (adsReadVariableByHandle.getAdsResponse().getErrorCode() == AdsErrorCode.NoError){
-            intVal = adsReadVariableByHandle.getData().getDINT(0);        
+        int intVal = 0;
+        if (getAdsReadVariableByHandle().getAdsResponse().getErrorCode() == AdsErrorCode.NoError){
+            intVal = getAdsReadVariableByHandle().getAdsResponse().getData().getDINT(0);        
             try{
                 inCheck = true;
                 set(intVal);
@@ -85,8 +76,13 @@ public class IoSignedInteger extends org.jpac.vioss.IoSignedInteger{
             if (Log.isDebugEnabled() && isChanged()){
                 try{Log.debug(this + " set to " + get());}catch(SignalInvalidException exc){/*cannot happen*/}
             }
+            checkInFaultLogged = false;
        }
        else{
+           if (!checkInFaultLogged){
+               Log.error(this + " got invalid due to ads Error " + adsReadVariableByHandle.getAdsResponse().getErrorCode());
+               checkInFaultLogged = true;
+           }
            invalidate();
        }
     }
@@ -94,10 +90,19 @@ public class IoSignedInteger extends org.jpac.vioss.IoSignedInteger{
     @Override
     public void checkOut() throws SignalAccessException, AddressException, NumberOutOfRangeException{
         if (isValid()){
-            try{adsWriteVariableByHandle.getData().setDINT(0, get());}catch(SignalInvalidException exc){/*cannot happen*/}        
+            try{getAdsWriteVariableByHandle().getData().setDINT(0, get());}catch(SignalInvalidException exc){/*cannot happen*/}        
         }
         if (Log.isDebugEnabled() && isChanged()){
             try{Log.debug(this + " set to " + get());}catch(SignalInvalidException exc){/*cannot happen*/}
+        }
+        AdsErrorCode adsError = getAdsWriteVariableByHandle().getAdsResponse().getErrorCode();
+        if (adsError != AdsErrorCode.NoError){
+            if (!checkOutFaultLogged){
+                Log.error(this + " cannot be propagated to plc due to ads Error " + getAdsWriteVariableByHandle().getAdsResponse().getErrorCode());
+            }
+        }
+        else{
+            checkOutFaultLogged = true;
         }
     }
 
@@ -106,28 +111,44 @@ public class IoSignedInteger extends org.jpac.vioss.IoSignedInteger{
         return null;
     }
     
-    protected AdsGetSymbolHandleByName getGetSymbolHandleByName(){
+    @Override
+    public AdsGetSymbolHandleByName getAdsGetSymbolHandleByName(){
         if (adsGetSymbolHandleByName == null){
             adsGetSymbolHandleByName = new AdsGetSymbolHandleByName(plcIdentifier);
         }
         return adsGetSymbolHandleByName;
     }
 
-    protected AdsReadVariableByHandle getReadAdsReadVariableByHandle(){
+    @Override
+    public AdsReadVariableByHandle getAdsReadVariableByHandle(){
         if (adsReadVariableByHandle == null){
-            adsReadVariableByHandle = new AdsReadVariableByHandle(adsGetSymbolHandleByName.getHandle(), SIGNEDINTEGERSIZE);
+            if (adsGetSymbolHandleByName != null){
+                Long handle = adsGetSymbolHandleByName.getHandle() == null ? 0 : adsGetSymbolHandleByName.getHandle();//handle is not retrieved from plc at this point
+                adsReadVariableByHandle = new AdsReadVariableByHandle(handle, SIGNEDINTEGERSIZE);                
+            }
+            else{
+                Log.error("missing symbol handle for " + plcIdentifier);
+            }
         }
         return adsReadVariableByHandle;
     }
 
-    protected AdsWriteVariableByHandle getWriteAdsReadVariableByHandle(){
+    @Override
+    public AdsWriteVariableByHandle getAdsWriteVariableByHandle(){
         if (adsWriteVariableByHandle == null){
-            adsWriteVariableByHandle = new AdsWriteVariableByHandle(adsGetSymbolHandleByName.getHandle(), SIGNEDINTEGERSIZE, new Data(new byte[SIGNEDINTEGERSIZE], Data.Endianness.LITTLEENDIAN));
+            if (adsGetSymbolHandleByName != null){
+                Long handle = adsGetSymbolHandleByName.getHandle() == null ? 0 : adsGetSymbolHandleByName.getHandle();//handle is not retrieved from plc, at this point
+                adsWriteVariableByHandle = new AdsWriteVariableByHandle(handle, SIGNEDINTEGERSIZE, new Data(new byte[SIGNEDINTEGERSIZE], Data.Endianness.LITTLEENDIAN));
+            }
+            else{
+                Log.error("missing symbol handle for " + plcIdentifier);
+            }
         }
         return adsWriteVariableByHandle;
     }
 
-    protected AdsReleaseHandle getAdsReleaseHandle(){
+    @Override
+    public AdsReleaseHandle getAdsReleaseHandle(){
         if (adsReleaseHandle == null){
             adsReleaseHandle = new AdsReleaseHandle(adsGetSymbolHandleByName.getHandle());
         }
