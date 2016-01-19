@@ -28,13 +28,11 @@ package org.jpac.vioss.ads;
 import java.net.URI;
 import org.jpac.AbstractModule;
 import org.jpac.InconsistencyException;
-import org.jpac.IndexOutOfRangeException;
 import org.jpac.NumberOutOfRangeException;
 import org.jpac.SignalAccessException;
 import org.jpac.SignalAlreadyExistsException;
 import org.jpac.SignalInvalidException;
 import org.jpac.WrongUseException;
-import org.jpac.plc.Address;
 import org.jpac.plc.AddressException;
 import org.jpac.plc.Data;
 import org.jpac.plc.IoDirection;
@@ -45,6 +43,7 @@ import org.jpac.plc.IoDirection;
  */
 public class IoSignedInteger extends org.jpac.vioss.IoSignedInteger implements IoSignal{
     private final static int         SIGNEDINTEGERSIZE = 4;
+    private final static Long        NULLHANDLE        = 0L;
     
     private String                   plcIdentifier;
     private AdsGetSymbolHandleByName adsGetSymbolHandleByName;
@@ -98,17 +97,13 @@ public class IoSignedInteger extends org.jpac.vioss.IoSignedInteger implements I
         AdsErrorCode adsError = getAdsWriteVariableByHandle().getAdsResponse().getErrorCode();
         if (adsError != AdsErrorCode.NoError){
             if (!checkOutFaultLogged){
+                checkOutFaultLogged = true;
                 Log.error(this + " cannot be propagated to plc due to ads Error " + getAdsWriteVariableByHandle().getAdsResponse().getErrorCode());
             }
         }
         else{
-            checkOutFaultLogged = true;
+            checkOutFaultLogged = false;
         }
-    }
-
-    @Override
-    protected Address seizeAddress(URI uri) throws InconsistencyException {
-        return null;
     }
     
     @Override
@@ -122,13 +117,7 @@ public class IoSignedInteger extends org.jpac.vioss.IoSignedInteger implements I
     @Override
     public AdsReadVariableByHandle getAdsReadVariableByHandle(){
         if (adsReadVariableByHandle == null){
-            if (adsGetSymbolHandleByName != null){
-                Long handle = adsGetSymbolHandleByName.getHandle() == null ? 0 : adsGetSymbolHandleByName.getHandle();//handle is not retrieved from plc at this point
-                adsReadVariableByHandle = new AdsReadVariableByHandle(handle, SIGNEDINTEGERSIZE);                
-            }
-            else{
-                Log.error("missing symbol handle for " + plcIdentifier);
-            }
+            adsReadVariableByHandle = new AdsReadVariableByHandle(NULLHANDLE, SIGNEDINTEGERSIZE);                
         }
         return adsReadVariableByHandle;
     }
@@ -136,13 +125,7 @@ public class IoSignedInteger extends org.jpac.vioss.IoSignedInteger implements I
     @Override
     public AdsWriteVariableByHandle getAdsWriteVariableByHandle(){
         if (adsWriteVariableByHandle == null){
-            if (adsGetSymbolHandleByName != null){
-                Long handle = adsGetSymbolHandleByName.getHandle() == null ? 0 : adsGetSymbolHandleByName.getHandle();//handle is not retrieved from plc, at this point
-                adsWriteVariableByHandle = new AdsWriteVariableByHandle(handle, SIGNEDINTEGERSIZE, new Data(new byte[SIGNEDINTEGERSIZE], Data.Endianness.LITTLEENDIAN));
-            }
-            else{
-                Log.error("missing symbol handle for " + plcIdentifier);
-            }
+            adsWriteVariableByHandle = new AdsWriteVariableByHandle(NULLHANDLE, SIGNEDINTEGERSIZE, new Data(new byte[SIGNEDINTEGERSIZE], Data.Endianness.LITTLEENDIAN));
         }
         return adsWriteVariableByHandle;
     }

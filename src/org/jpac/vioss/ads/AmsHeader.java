@@ -82,7 +82,7 @@ public class AmsHeader {
         if (!initialized){
             throw new IOException("length of the AMS request not set");
         }
-        invokeId = (int)System.nanoTime();//send an arbitrary, but (almost) unique value        
+        invokeId = connection.getUniqueInvokeId();
         if (Log.isDebugEnabled())Log.debug("  " + this);
         targetAmsNetId.write(connection);
         targetAmsPortNr.write(connection);

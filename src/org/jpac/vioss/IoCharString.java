@@ -1,6 +1,6 @@
 /**
  * PROJECT   : Elbfisch - java process automation controller (jPac)
- * MODULE    : IoSignedInteger.java (versatile input output subsystem)
+ * MODULE    : IoCharString.java (versatile input output subsystem)
  * VERSION   : -
  * DATE      : -
  * PURPOSE   : 
@@ -28,23 +28,23 @@ package org.jpac.vioss;
 import java.net.URI;
 import org.apache.log4j.Logger;
 import org.jpac.AbstractModule;
-import org.jpac.plc.Address;
 import org.jpac.InconsistencyException;
 import org.jpac.SignalAlreadyExistsException;
 import org.jpac.WrongUseException;
 import org.jpac.plc.IoDirection;
+import org.jpac.plc.StringLengthException;
 
 /**
  *
  * @author berndschuster
  */
-abstract public class IoSignedInteger extends org.jpac.plc.IoSignedInteger implements IoSignal {
+abstract public class IoCharString extends org.jpac.plc.IoCharString implements IoSignal{
     static public Logger Log = Logger.getLogger("jpac.Signal");
 
     private IoSignalImpl ioSignalImpl;
     
     /**
-     * constructs a signed integer input signal
+     * constructs a logical input signal
      * @param containingModule: module, this signal is contained in
      * @param identifier: identifier of the signal
      * @param uri: unified resource identifier of the input signal
@@ -53,7 +53,7 @@ abstract public class IoSignedInteger extends org.jpac.plc.IoSignedInteger imple
      * @throws InconsistencyException: an IOHandler for the given URI cannot be instantiated
      * @throws org.jpac.WrongUseException
      */
-    public IoSignedInteger(AbstractModule containingModule, String identifier, URI uri, IoDirection ioDirection) throws SignalAlreadyExistsException, InconsistencyException, WrongUseException{
+    public IoCharString(AbstractModule containingModule, String identifier, URI uri, IoDirection ioDirection) throws SignalAlreadyExistsException, InconsistencyException, WrongUseException, StringLengthException{
         super(containingModule, identifier, null, null, ioDirection);
         this.ioSignalImpl = new IoSignalImpl(this, uri);
     }  

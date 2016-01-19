@@ -131,6 +131,10 @@ abstract public class AmsPacket {
        getResponseAmsTcpHeader().read(connection);
        getResponseAmsHeader().read(connection);
        if (getResponseAmsHeader().getInvokeId() != getRequestAmsHeader().getInvokeId()){
+           Log.error("Error: unexpected invoke id in response AMS header :" + getResponseAmsHeader());
+           Log.error("  stateFlags: " + getResponseAmsHeader().getStateFlags());
+           Log.error("  dataLength: " + getResponseAmsHeader().getDataLength());
+           Log.error("  errorCode : " + getResponseAmsHeader().getErrorCode());
            //discard rest of response
            connection.getInputStream().skip(connection.getInputStream().available());
            throw new IOException("returned response does not match request (mismatched invokeId: expected: " + getRequestAmsHeader().getInvokeId() + " received: " + getResponseAmsHeader().getInvokeId() + ")");
@@ -143,7 +147,7 @@ abstract public class AmsPacket {
        getAdsResponse().read(connection);
        if (getAdsResponse().getErrorCode() != AdsErrorCode.NoError){
            connection.getInputStream().skip(connection.getInputStream().available());
-           throw new IOException("Ads Response Error " + getAdsResponse().getErrorCode());           
+           throw new IOException("Ads Response Error: " + getAdsResponse().getErrorCode());           
        }
        if (connection.getInputStream().available() > 0){
            throw new IOException("inconsistent response received. Some trailing bytes left: " + connection.getInputStream().available());           

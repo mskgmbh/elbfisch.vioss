@@ -1,6 +1,6 @@
 /**
  * PROJECT   : Elbfisch - java process automation controller (jPac)
- * MODULE    : OutputSignal.java (versatile input output subsystem)
+ * MODULE    : IoSignal.java (versatile input output subsystem)
  * VERSION   : -
  * DATE      : -
  * PURPOSE   : 
@@ -25,16 +25,14 @@
 
 package org.jpac.vioss;
 
-import org.jpac.Address;
-import org.jpac.SignalAccessException;
-import org.jpac.plc.AddressException;
+import java.net.URI;
+import org.jpac.InconsistencyException;
+import org.jpac.plc.Address;
 
 /**
  *
  * @author berndschuster
  */
-public interface OutputSignal {
-    public void    setAddress(Address address);
-    public Address getAddress();
-    public void put() throws SignalAccessException, AddressException;
+public interface IoSignal extends org.jpac.plc.IoSignal{
+    public URI getUri();
 }

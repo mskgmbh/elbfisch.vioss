@@ -26,7 +26,6 @@
 package org.jpac.vioss.ads;
 
 import java.io.IOException;
-import java.util.StringTokenizer;
 import org.jpac.WrongUseException;
 import org.jpac.vioss.InvalidAddressException;
 

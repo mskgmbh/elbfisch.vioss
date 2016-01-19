@@ -42,7 +42,7 @@ public class AdsReadWrite extends AmsPacket{
     public AdsReadWrite(IndexGroup indexGroup, int indexOffset){
         this(indexGroup, indexOffset, 0, 0, null, null);
     }
-
+    
     public class AdsReadWriteRequest extends AdsRequest{
         protected static final int INDEXOFFSETSIZE = 4;
         protected static final int READLENGTHSIZE  = 4;
@@ -172,10 +172,7 @@ public class AdsReadWrite extends AmsPacket{
         @Override
         public void readMetaData(Connection connection) throws IOException{
             super.readMetaData(connection);
-            int returnedLength = connection.getInputStream().readInt();
-            if (getErrorCode() == AdsErrorCode.NoError && returnedLength != length){
-                throw new IOException("length returned by the plc (" + returnedLength + ") does not match expected length (" + length + ")");
-            }
+            setLength(connection.getInputStream().readInt());
         }
 
         @Override

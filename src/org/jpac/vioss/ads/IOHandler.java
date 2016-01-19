@@ -32,11 +32,9 @@ import java.net.UnknownHostException;
 import org.jpac.Address;
 import org.jpac.AsynchronousTask;
 import org.jpac.InconsistencyException;
-import org.jpac.Module;
 import org.jpac.NumberOutOfRangeException;
 import org.jpac.ProcessException;
 import org.jpac.SignalAccessException;
-import org.jpac.Timer;
 import org.jpac.WrongUseException;
 import org.jpac.plc.AddressException;
 import static org.jpac.vioss.IOHandler.Log;
@@ -62,19 +60,20 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     private AdsReadMultiple      readVariablesByHandle;
     private AdsWriteMultiple     writeVariablesByHandle;
     private AdsWriteMultiple     releaseHandles;
+    private AdsReadState         adsReadState;
         
     public IOHandler(URI uri) throws IllegalUriException {
         super(uri);
         if (!getHandledScheme().equals(uri.getScheme().toUpperCase())){
             throw new IllegalUriException("scheme '" + uri.getScheme() + "' not handled by " + toString());
         }
-        connectionRunner = new ConnectionRunner(this + " connection runner");
-        state            = State.IDLE;
+        this.connectionRunner = new ConnectionRunner(this + " connection runner");
+        this.state            = State.IDLE;
+        this.adsReadState     = new AdsReadState();
     }
 
     @Override
     public void run(){
-        boolean done = false;
         try{
             switch(state){
                 case IDLE:
@@ -84,20 +83,26 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
                     //connect right away
                 case CONNECTING:
                     connecting();
-                    if (connected){
-                        //retrieve ads handles
-                        retrieveAdsVariableHandlesByName.transact(connection);
-                        assignHandlesToInputSignals();
-                        state = State.TRANSCEIVING;
+                    if (!connecting){
+                        if (connected){
+                            state = State.TRANSCEIVING;
+                        }
+                        else{
+                            state = State.STOPPED;
+                            Log.error(this + " stopped.");
+                        }
                     }
                     break;
                 case TRANSCEIVING:
                     try{
-                        done = transceiving();
+                        transceiving();
                     }
                     catch(IOException exc){
                         Log.error("Error: ", exc);
-                        state      = State.IDLE;
+                        invalidateInputSignals();
+                        try{releaseHandles.transact(connection);}catch(Exception ex){/*ignore*/};
+                        try{connection.close();}catch(Exception ex){/*ignore*/};
+                        state = State.IDLE;
                     }
                     break;
                 case CLOSINGCONNECTION:
@@ -129,22 +134,6 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     public void prepare() {
         try{
             Log.info("starting up " + this);
-            //collect signals to be transceived ...
-            writeVariablesByHandle           = new AdsWriteMultiple();
-            readVariablesByHandle            = new AdsReadMultiple();
-            retrieveAdsVariableHandlesByName = new AdsReadWriteMultiple();
-            releaseHandles                   = new AdsWriteMultiple();
-            for (org.jpac.plc.IoSignal ios: getInputSignals()){
-                retrieveAdsVariableHandlesByName.addAdsReadWrite(((IoSignal)ios).getAdsGetSymbolHandleByName());
-                releaseHandles.addAmsPacket(((IoSignal)ios).getAdsReleaseHandle());
-                readVariablesByHandle.addAmsPacket(((IoSignal)ios).getAdsReadVariableByHandle());
-            }
-            for (org.jpac.plc.IoSignal ios: getOutputSignals()){
-                if (!retrieveAdsVariableHandlesByName.getAdsReadWrites().contains(ios)){//avoid int/out signals to be collected twice
-                    retrieveAdsVariableHandlesByName.addAdsReadWrite(((IoSignal)ios).getAdsGetSymbolHandleByName());
-                    releaseHandles.addAmsPacket(((IoSignal)ios).getAdsReleaseHandle());
-                }
-            }
             setProcessingStarted(true);        
         }
         catch(Exception exc){
@@ -195,11 +184,17 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
                 connecting = true;
             }
             else{
-                //connect to plc in progress
-                connected  = connectionRunner.isFinished();
-                if (connected){
-                    connection = connectionRunner.getConnection();
-                    connecting = false;
+                //connect to plc in progress 
+                if (connectionRunner.isFinished()){
+                    if(connectionRunner.isConnectionEstablished()){
+                        connection = connectionRunner.getConnection();
+                        connected  = true;
+                    }
+                    else{
+                        connection = null;
+                        connected  = false;
+                        }
+                    connecting = false;                            
                 }
             }
         }
@@ -213,32 +208,27 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
      * is called in every cycle while in state TRANSCEIVING
      */
     protected boolean transceiving() throws IOException, WrongUseException, SignalAccessException, AddressException, NumberOutOfRangeException{
-        boolean done = false;
-        readVariablesByHandle.transact(connection);
-        //propagate input signals
-        for(org.jpac.plc.IoSignal ios: getInputSignals()){
-            ios.checkIn();
+        if (!readVariablesByHandle.getAmsPackets().isEmpty()){
+            readVariablesByHandle.transact(connection);
+            //propagate input signals
+            for(org.jpac.plc.IoSignal ios: getInputSignals()){
+                ios.checkIn();
+            }
         }
         //prepare output signals for propagation to plc
         writeVariablesByHandle.clearAmsPackets();
         for(org.jpac.plc.IoSignal ios: getOutputSignals()){
             if (ios.isToBePutOut()){
+                ios.resetToBePutOut();
                 ios.checkOut();
                 writeVariablesByHandle.addAmsPacket(((IoSignal)ios).getAdsWriteVariableByHandle());
             }
         }
-        writeVariablesByHandle.transact(connection);
-        //denote signals as being properly transmitted
-        for(org.jpac.plc.IoSignal ios: getOutputSignals()){
-            if (ios.isToBePutOut()){
-                if (((IoSignal)ios).getAdsWriteVariableByHandle().getAdsResponse().getErrorCode() == AdsErrorCode.NoError){
-                    ios.resetToBePutOut();
-                }
-            }
+        if (!writeVariablesByHandle.getAmsPackets().isEmpty()){
+            writeVariablesByHandle.transact(connection);
         }
-        done = true;
-        return done;
-    };
+        return true;
+    };    
     
     protected boolean closingConnection() throws IOException, WrongUseException{
         boolean done = false;
@@ -258,10 +248,53 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
         return done;
     };
     
-    protected void assignHandlesToInputSignals(){
+    protected void prepareSignalsForTransfer(){
+        //collect signals to be transceived ...
+        writeVariablesByHandle           = new AdsWriteMultiple();
+        readVariablesByHandle            = new AdsReadMultiple();
+        retrieveAdsVariableHandlesByName = new AdsReadWriteMultiple();
+        releaseHandles                   = new AdsWriteMultiple();
         for (org.jpac.plc.IoSignal ios: getInputSignals()){
+            retrieveAdsVariableHandlesByName.addAdsReadWrite(((IoSignal)ios).getAdsGetSymbolHandleByName());
+            releaseHandles.addAmsPacket(((IoSignal)ios).getAdsReleaseHandle());
+            readVariablesByHandle.addAmsPacket(((IoSignal)ios).getAdsReadVariableByHandle());
+        }
+        for (org.jpac.plc.IoSignal ios: getOutputSignals()){
+            if (!retrieveAdsVariableHandlesByName.getAdsReadWrites().contains(ios)){//avoid int/out signals to be collected twice
+                retrieveAdsVariableHandlesByName.addAdsReadWrite(((IoSignal)ios).getAdsGetSymbolHandleByName());
+                releaseHandles.addAmsPacket(((IoSignal)ios).getAdsReleaseHandle());
+            }
+        }        
+    }
+    
+    protected void assignHandlesToSignals(){
+        for (org.jpac.vioss.IoSignal ios: getInputSignals()){
             ((IoSignal)ios).getAdsReadVariableByHandle().setHandle(((IoSignal)ios).getAdsGetSymbolHandleByName().getHandle());
         }
+        for (org.jpac.vioss.IoSignal ios: getOutputSignals()){
+            ((IoSignal)ios).getAdsWriteVariableByHandle().setHandle(((IoSignal)ios).getAdsGetSymbolHandleByName().getHandle());
+        }
+    }
+        
+    protected void logIoSignalsWithMissingHandle(){
+        for (org.jpac.vioss.IoSignal ios: getInputSignals()){
+            AdsErrorCode adsErrorCode = ((IoSignal)ios).getAdsGetSymbolHandleByName().getAdsResponse().getErrorCode();
+            if (adsErrorCode != AdsErrorCode.NoError){
+                Log.error("failed to retrieve handle for " + ios.getUri() + " ads error code: " + adsErrorCode);
+            }
+        }
+        for (org.jpac.vioss.IoSignal ios: getOutputSignals()){
+            AdsErrorCode adsErrorCode = ((IoSignal)ios).getAdsGetSymbolHandleByName().getAdsResponse().getErrorCode();
+            if (adsErrorCode != AdsErrorCode.NoError){
+                Log.error("failed to retrieve handle for " + ios.getUri() + " ads error code: " + adsErrorCode);
+            }
+        }
+    }   
+    
+    protected void invalidateInputSignals() throws SignalAccessException{
+        for (org.jpac.vioss.IoSignal ios: getInputSignals()){
+            ios.invalidate();
+        }        
     }
     
     @Override
@@ -291,17 +324,29 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     
     class ConnectionRunner extends AsynchronousTask{ 
         private Connection           connection;
+        private boolean              connected;
         public ConnectionRunner(String identifier){
             super(identifier);
         }
         
         @Override
         public void doIt() throws ProcessException {
-            boolean connected = false;
+            AdsState  adsState = AdsState.Undefined;
+            
+            connected = false;
             Log.info("establishing connection ...");
             do{
                 try{
                     connection = new Connection(getUri().getHost());
+                    //wait, until plc is running
+                    do{
+                        adsReadState.transact(connection);
+                        adsState = adsReadState.getAdsState();
+                        if (adsState != AdsState.Run){
+                            try{Thread.sleep(CONNECTIONRETRYTIME);}catch(InterruptedException ex){/*cannot happen*/};
+                        }
+                    }
+                    while(adsState != AdsState.Run);
                     connected  = true;
                 }
                 catch(Exception exc){
@@ -310,13 +355,33 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
                 }
             }
             while(!connected && !isTerminated());
-            if (connected){
-                Log.info("... connection established");            
+            if (connected && !isTerminated()){
+                //try to retrieve variable handles
+                try{
+                    prepareSignalsForTransfer();
+                    //retrieve ads handles
+                    retrieveAdsVariableHandlesByName.transact(connection);
+                    assignHandlesToSignals();
+                    Log.info("... connection established");            
+                }
+                catch(Exception exc){
+                    logIoSignalsWithMissingHandle();        
+                    //close connection
+                    try{connection.close();}catch(Exception ex){};
+                    connection = null;
+                    connected  = false;
+                    Log.error("Error:", exc);
+                }
             }
         }
         
         public Connection getConnection(){
             return this.connection;
         }
+        
+        public boolean isConnectionEstablished(){
+            return connected;
+        }
     }    
+    
 }

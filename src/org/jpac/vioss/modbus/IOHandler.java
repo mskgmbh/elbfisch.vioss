@@ -40,9 +40,8 @@ import org.jpac.WrongUseException;
 import org.jpac.plc.AddressException;
 import org.jpac.plc.Data;
 import org.jpac.vioss.IllegalUriException;
-import org.jpac.vioss.OutputSignal;
 import org.jpac.Address;
-import org.jpac.plc.IoSignal;
+import org.jpac.vioss.IoSignal;
 
 /**
  *

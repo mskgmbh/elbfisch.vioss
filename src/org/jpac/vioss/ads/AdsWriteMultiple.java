@@ -53,6 +53,10 @@ public class AdsWriteMultiple extends AdsReadWrite{
     public void clearAmsPackets(){
         amsPackets.clear();
     }
+    
+    public ArrayList<AmsPacket> getAmsPackets(){
+        return this.amsPackets;
+    }
 
     public class AdsWriteMultipleRequest extends AdsReadWrite.AdsReadWriteRequest{
         private ArrayList<AmsPacket> amsPackets;

@@ -35,19 +35,21 @@ import org.jpac.vioss.ads.IoSignedInteger;
  * @author berndschuster
  */
 public class MainModule extends Module{
-    CountModule      testModule;
-    HandshakeModule handshakeModule;
+    CountModule      countModule;
+    //HandshakeModule  handshakeModule;
+    DerivedHandshake handshakeModule;
     
     public MainModule() throws SignalAlreadyExistsException, InconsistencyException, WrongUseException, URISyntaxException{
         super(null,"main");
-        testModule = new CountModule(this);
-        handshakeModule = new HandshakeModule(this);
+        countModule = new CountModule(this);
+//        handshakeModule = new HandshakeModule(this);
+//        handshakeModule = new DerivedHandshake(this);
     }
     
     @Override
     public void start(){
-        testModule.start();
-        handshakeModule.start();
+        countModule.start();
+//        handshakeModule.start();
         super.start();
     }
     

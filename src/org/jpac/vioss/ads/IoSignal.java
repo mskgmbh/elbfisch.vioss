@@ -22,7 +22,10 @@
  * You should have received a copy of the GNU General Public License
  * along with the jPac If not, see <http://www.gnu.org/licenses/>.
  */
+
 package org.jpac.vioss.ads;
+
+import java.net.URI;
 
 /**
  *

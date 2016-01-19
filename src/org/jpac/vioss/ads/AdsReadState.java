@@ -31,14 +31,20 @@ import java.io.IOException;
  * @author berndschuster
  */
 public class AdsReadState extends AmsPacket{
-    AdsReadStateRequest  adsReadStateRequest;
-    AdsReadStateResponse adsReadStateResponse;
     
     public AdsReadState(){
         super();
         setAdsRequest(new AdsReadStateRequest());
         setAdsResponse(new AdsReadStateResponse());
     }
+    
+    public AdsState getAdsState(){
+        return ((AdsReadStateResponse)getAdsResponse()).adsState;
+    }
+
+    public DeviceState getDeviceState(){
+        return ((AdsReadStateResponse)getAdsResponse()).deviceState;
+    }    
     
     public class AdsReadStateRequest extends AdsRequest{
 

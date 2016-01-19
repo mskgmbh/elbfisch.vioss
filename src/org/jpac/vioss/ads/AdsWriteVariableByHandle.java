@@ -35,6 +35,10 @@ public class AdsWriteVariableByHandle extends AdsWrite{
     public AdsWriteVariableByHandle(Long handle, int length, Data data){
         super(IndexGroup.ADSIGRP_SYM_VALBYHND, handle, length, data);
     }
+    public void setHandle(Long handle){
+        ((AdsWriteRequest)getAdsRequest()).setIndexOffset(handle.intValue());
+    }
+    
     public Data getData(){
         return ((AdsWriteRequest)adsRequest).getData();
     }

@@ -126,18 +126,24 @@ public class AdsReadWriteMultiple extends AdsReadWrite{
         public void readData(Connection connection) throws IOException {
             //first read error codes
             for(AdsReadWrite arw: adsReadWrites){
-                arw.getAdsResponse().setErrorCode(AdsErrorCode.getValue(connection.getInputStream().readInt()));
-                if (arw.getAdsResponse().getErrorCode() != AdsErrorCode.NoError){
+                AdsErrorCode receivedErrorCode = AdsErrorCode.getValue(connection.getInputStream().readInt());
+                arw.getAdsResponse().setErrorCode(receivedErrorCode);
+                if (receivedErrorCode != AdsErrorCode.NoError){
                     numberOfFailedAccesses++;
                 }
                 int actualLength = connection.getInputStream().readInt();
-                if (actualLength !=  arw.getAdsResponse().getLength()){
+                if (receivedErrorCode == AdsErrorCode.NoError && actualLength != arw.getAdsResponse().getLength()){
+                    setErrorCode(AdsErrorCode.ProtocolError);
                     throw new IOException("data length (" + actualLength + ") does not match expected length (" + arw.getAdsResponse().getLength() + ")");
                 }
+                arw.getAdsResponse().setLength(actualLength);
             }
             //then read data items
             for(AdsReadWrite arw: adsReadWrites){
                 connection.getInputStream().read(arw.getAdsResponse().getData().getBytes(), 0, arw.getAdsResponse().getLength());
+            }
+            if (numberOfFailedAccesses > 0){
+                setErrorCode(AdsErrorCode.SomeReadWritesFailed);                
             }
         }
         

@@ -25,8 +25,6 @@
 
 package org.jpac.vioss.ads;
 
-import java.io.IOException;
-import org.jpac.WrongUseException;
 import org.jpac.plc.AddressException;
 import org.jpac.plc.Data;
 import org.jpac.plc.PlcString;

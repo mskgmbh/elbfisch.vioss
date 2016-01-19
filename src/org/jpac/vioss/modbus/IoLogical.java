@@ -1,6 +1,6 @@
 /**
  * PROJECT   : Elbfisch - java process automation controller (jPac)
- * MODULE    : LogicalInput.java (versatile input output subsystem)
+ * MODULE    : IoLogical.java (versatile input output subsystem)
  * VERSION   : -
  * DATE      : -
  * PURPOSE   : 
@@ -45,21 +45,6 @@ public class IoLogical extends org.jpac.vioss.IoLogical{
         
     public IoLogical(AbstractModule containingModule, String identifier, URI uri, IoDirection ioDirection) throws SignalAlreadyExistsException, InconsistencyException, WrongUseException{
         super(containingModule, identifier, uri, ioDirection);
-        setAddress(seizeAddress(uri));
-        switch(ioDirection){
-            case INPUT:
-                getIOHandler().registerInputSignal(this); 
-                break;
-            case OUTPUT:
-                getIOHandler().registerOutputSignal(this); 
-                break;
-            case INOUT:
-                getIOHandler().registerInputSignal(this); 
-                getIOHandler().registerOutputSignal(this); 
-                break;
-            default:
-                throw new WrongUseException("signal '" + getIdentifier() + "'  must be either input or output or both: ");
-        }
     }  
     
     protected Address seizeAddress(URI uri) throws InconsistencyException{

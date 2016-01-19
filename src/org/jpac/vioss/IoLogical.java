@@ -38,13 +38,10 @@ import org.jpac.plc.IoDirection;
  *
  * @author berndschuster
  */
-abstract public class IoLogical extends org.jpac.plc.IoLogical {
+abstract public class IoLogical extends org.jpac.plc.IoLogical implements IoSignal{
     static public Logger Log = Logger.getLogger("jpac.Signal");
 
-    private URI       uri;
-    private IOHandler ioHandler;
-    private Address   address;
-    
+    private IoSignalImpl ioSignalImpl;
     
     /**
      * constructs a logical input signal
@@ -58,45 +55,15 @@ abstract public class IoLogical extends org.jpac.plc.IoLogical {
      */
     public IoLogical(AbstractModule containingModule, String identifier, URI uri, IoDirection ioDirection) throws SignalAlreadyExistsException, InconsistencyException, WrongUseException{
         super(containingModule, identifier, null, null, ioDirection);
-        this.uri       = uri;
-        setAddress(seizeAddress(uri));
-        switch(ioDirection){
-            case INPUT:
-                getIOHandler().registerInputSignal(this); 
-                break;
-            case OUTPUT:
-                getIOHandler().registerOutputSignal(this); 
-                break;
-            case INOUT:
-                getIOHandler().registerInputSignal(this); 
-                getIOHandler().registerOutputSignal(this); 
-                break;
-            default:
-                throw new WrongUseException("signal '" + getIdentifier() + "'  must be either input or output or both: ");
-        }        
-        
+        this.ioSignalImpl = new IoSignalImpl(this, uri);
     }  
-    
-    /**
-     * returns the IOHandler, this signal is assigned to
-     * @return 
-     * @throws org.jpac.InconsistencyException 
-     */
-    protected IOHandler getIOHandler() throws InconsistencyException{
-        if (ioHandler == null){
-            try {
-                ioHandler = IOHandlerFactory.getHandlerFor(getAddress(), getUri());
-            } catch (ClassNotFoundException ex) {
-                throw new InconsistencyException("no IOHandler found for " + uri);
-            }            
-        }
-        return ioHandler;
-    }
-    
 
+    @Override
     public URI getUri(){
-        return this.uri;
+        return this.ioSignalImpl.getUri();
     }
-
-    abstract protected Address seizeAddress(URI uri) throws InconsistencyException;
+    
+    public IOHandler getIOHandler() throws InconsistencyException{
+        return this.ioSignalImpl.getIOHandler();
+    }
 }

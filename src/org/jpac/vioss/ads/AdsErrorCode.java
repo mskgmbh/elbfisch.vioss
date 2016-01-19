@@ -31,7 +31,9 @@ import java.io.IOException;
  * @author berndschuster
  */
 public enum AdsErrorCode {
-    Undefined                   (-1,"Undefined"),
+    Undefined                   (-1,"Undefined"),//added by Elbfisch
+    ProtocolError               (-2,"protocol error encountered"),//added by Elbfisch
+    SomeReadWritesFailed        (-3,"some AdsReadWrite operations failed while performing an AdsReadWriteMultiple operation"),//added by Elbfisch
     NoError                     ( 0,"No Error"),
     InternalError               ( 1,"Internal Error"),
     NoRTime                     ( 2,"No Rtime"),

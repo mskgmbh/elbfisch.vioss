@@ -39,7 +39,6 @@ import org.jpac.SignalAccessException;
 import org.jpac.WrongUseException;
 import org.jpac.plc.AddressException;
 import org.jpac.plc.IoDirection;
-import org.jpac.plc.IoSignal;
 
 /**
  * implements basic functions of vioss IOHandlers.

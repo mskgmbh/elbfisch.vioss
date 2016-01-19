@@ -26,10 +26,12 @@
 package org.jpac.vioss;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.apache.log4j.Logger;
 import org.jpac.configuration.StringProperty;
 import org.jpac.Address;
 
@@ -38,6 +40,7 @@ import org.jpac.Address;
  * @author berndschuster
  */
 public class IOHandlerFactory {
+    static public Logger Log = Logger.getLogger("jpac.vioss.IOHandler");    
     static List<IOHandler> instances;
     
     /**
@@ -72,6 +75,12 @@ public class IOHandlerFactory {
                 instances.add(ioHandler);
             }
             catch(Exception exc){
+                if (exc instanceof InvocationTargetException && exc.getCause() instanceof IllegalUriException){
+                    Log.error("Error:",exc.getCause());
+                }
+                else{
+                    Log.error("Error:", exc);
+                }
                 throw new ClassNotFoundException(cyclicInputHandlerClass, exc);
             }
         }

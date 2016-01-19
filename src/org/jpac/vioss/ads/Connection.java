@@ -57,6 +57,7 @@ public class Connection{
     protected AmsPortNr                  localAmsPortNr;
     
     protected boolean                    connected;
+    protected int                        uniqueInvokeId;
         
     /**
      * an instance of Connection is created and the connection to given the plc is initiated immediately
@@ -73,6 +74,7 @@ public class Connection{
         targetAmsPortNr = amsPortNr;
         localAmsNetId   = new AmsNetId(InetAddress.getLocalHost().getHostAddress() + AMSNETIDEXTENSION);
         localAmsPortNr  = AmsPortNr.Local;
+        uniqueInvokeId  = 0;
         initialize();
     }
             
@@ -186,6 +188,10 @@ public class Connection{
      */
     public AmsPortNr getLocalAmsPortNr() {
         return localAmsPortNr;
+    }
+    
+    public int getUniqueInvokeId(){
+        return ++uniqueInvokeId > Short.MAX_VALUE ? 0 : uniqueInvokeId;
     }
     
     @Override

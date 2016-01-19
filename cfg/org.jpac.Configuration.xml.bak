@@ -14,11 +14,16 @@
         <RemoteSignalPort comment="server port for remote signal access">10002</RemoteSignalPort>
         <storeHistogrammsOnShutdown comment="enables storing of histogramm data on shutdown">false</storeHistogrammsOnShutdown>
         <HistogrammFile comment="file in which the histogramms are stored">./data/histogramm.csv</HistogrammFile>
-    <CyclicTaskShutdownTimeoutTime comment="Timeout for all cyclic tasks to stop on shutdown [ns]">5000000000</CyclicTaskShutdownTimeoutTime>
-</org.jpac.JPac>
+        <CyclicTaskShutdownTimeoutTime comment="Timeout for all cyclic tasks to stop on shutdown [ns]">5000000000</CyclicTaskShutdownTimeoutTime>
+        <OpcUaServiceEnabled comment="enables the opc ua service">false</OpcUaServiceEnabled>
+        <OpcUaServicePort comment="port over which the opc ua service is provided">12685</OpcUaServicePort>
+        <OpcUaServiceName comment="name of the server instance">elbfisch</OpcUaServiceName>
+        <OpcUaDefaultAccessLevel comment="access levels can be NONE,READ_ONLY,READ_WRITE">READ_WRITE</OpcUaDefaultAccessLevel>
+    </org.jpac.JPac>
 <org.jpac.vioss>
         <modbus>org.jpac.vioss.modbus.IOHandler</modbus>        
         <ads>org.jpac.vioss.ads.IOHandler</ads>        
+        <opcua>org.jpac.vioss.opcua.IOHandler</opcua>        
     </org.jpac.vioss>
 <PlcListener>
         <host comment="Ip of the S7 plc which has to be logged">127.0.0.1</host>
