@@ -28,7 +28,6 @@ package org.jpac.vioss;
 import java.net.URI;
 import org.apache.log4j.Logger;
 import org.jpac.AbstractModule;
-import org.jpac.plc.Address;
 import org.jpac.InconsistencyException;
 import org.jpac.SignalAlreadyExistsException;
 import org.jpac.WrongUseException;

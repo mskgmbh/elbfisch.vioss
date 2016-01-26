@@ -39,7 +39,6 @@ import org.jpac.NumberOutOfRangeException;
 import org.jpac.SignalAccessException;
 import org.jpac.SignalAlreadyExistsException;
 import org.jpac.WrongUseException;
-import org.jpac.plc.Address;
 import org.jpac.plc.AddressException;
 import org.jpac.plc.IoDirection;
 
@@ -77,6 +76,7 @@ public class IoDecimal extends org.jpac.vioss.IoDecimal implements IoSignal{
                     }
                 });
         this.ioSignalImpl.setCheckOutValueGetter(() -> {return isValid() ? getValue() : null;});
+        Log.error("!!!!!!!!!!!!!!   IoDecimal is not tested  yet");//TODO
     }
         
     public IoDecimal(AbstractModule containingModule, String identifier, URI uri, IoDirection ioDirection) throws SignalAlreadyExistsException, InconsistencyException, WrongUseException{
@@ -91,11 +91,6 @@ public class IoDecimal extends org.jpac.vioss.IoDecimal implements IoSignal{
     @Override
     public void checkOut() throws SignalAccessException, AddressException{
         ioSignalImpl.checkOut();
-    }
-
-    @Override
-    protected Address seizeAddress(URI uri) throws InconsistencyException {
-        return null;
     }
     
     public int getNameSpaceIndex(){

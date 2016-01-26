@@ -61,6 +61,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     private AdsWriteMultiple     writeVariablesByHandle;
     private AdsWriteMultiple     releaseHandles;
     private AdsReadState         adsReadState;
+    private boolean              adsStateNotRunLogged;
         
     public IOHandler(URI uri) throws IllegalUriException {
         super(uri);
@@ -208,24 +209,32 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
      * is called in every cycle while in state TRANSCEIVING
      */
     protected boolean transceiving() throws IOException, WrongUseException, SignalAccessException, AddressException, NumberOutOfRangeException{
-        if (!readVariablesByHandle.getAmsPackets().isEmpty()){
-            readVariablesByHandle.transact(connection);
-            //propagate input signals
-            for(org.jpac.plc.IoSignal ios: getInputSignals()){
-                ios.checkIn();
+        AdsState adsState;
+        adsReadState.transact(connection);
+        adsState = adsReadState.getAdsState();
+        if (adsState == AdsState.Run || adsState == AdsState.Stop){
+            if (!readVariablesByHandle.getAmsPackets().isEmpty()){
+                readVariablesByHandle.transact(connection);
+                //propagate input signals
+                for(org.jpac.plc.IoSignal ios: getInputSignals()){
+                    ios.checkIn();
+                }
+            }
+            //prepare output signals for propagation to plc
+            writeVariablesByHandle.clearAmsPackets();
+            for(org.jpac.plc.IoSignal ios: getOutputSignals()){
+                if (ios.isToBePutOut()){
+                    ios.resetToBePutOut();
+                    ios.checkOut();
+                    writeVariablesByHandle.addAmsPacket(((IoSignal)ios).getAdsWriteVariableByHandle());
+                }
+            }
+            if (!writeVariablesByHandle.getAmsPackets().isEmpty()){
+                writeVariablesByHandle.transact(connection);
             }
         }
-        //prepare output signals for propagation to plc
-        writeVariablesByHandle.clearAmsPackets();
-        for(org.jpac.plc.IoSignal ios: getOutputSignals()){
-            if (ios.isToBePutOut()){
-                ios.resetToBePutOut();
-                ios.checkOut();
-                writeVariablesByHandle.addAmsPacket(((IoSignal)ios).getAdsWriteVariableByHandle());
-            }
-        }
-        if (!writeVariablesByHandle.getAmsPackets().isEmpty()){
-            writeVariablesByHandle.transact(connection);
+        else{
+            throw new IOException("ADS state changed to " + adsState);
         }
         return true;
     };    
@@ -343,6 +352,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
                         adsReadState.transact(connection);
                         adsState = adsReadState.getAdsState();
                         if (adsState != AdsState.Run){
+                            if (Log.isDebugEnabled())Log.debug("current ADS state: " + adsState);
                             try{Thread.sleep(CONNECTIONRETRYTIME);}catch(InterruptedException ex){/*cannot happen*/};
                         }
                     }

@@ -42,7 +42,7 @@ import org.jpac.plc.modbus.util.Modbus;
  *
  */
 public class Connection{
-    static Logger Log = Logger.getLogger("jpac.plc");
+    static Logger Log = Logger.getLogger("jpac.vioss.modbus");
     
     static final int DEFAULTMODBUSPORT  = 502;
 

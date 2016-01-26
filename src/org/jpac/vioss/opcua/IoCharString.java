@@ -77,6 +77,7 @@ public class IoCharString extends org.jpac.vioss.IoCharString implements IoSigna
                     }
                 });
         this.ioSignalImpl.setCheckOutValueGetter(() -> {return isValid() ? getValue() : null;});
+        Log.error("!!!!!!!!!!!!!!   IoCharString is not tested  yet");//TODO
     }
         
     public IoCharString(AbstractModule containingModule, String identifier, URI uri, IoDirection ioDirection) throws SignalAlreadyExistsException, InconsistencyException, WrongUseException, StringLengthException{

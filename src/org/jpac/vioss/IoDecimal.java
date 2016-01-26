@@ -56,7 +56,6 @@ abstract public class IoDecimal extends org.jpac.plc.IoDecimal implements IoSign
     public IoDecimal(AbstractModule containingModule, String identifier, URI uri, IoDirection ioDirection) throws SignalAlreadyExistsException, InconsistencyException, WrongUseException{
         super(containingModule, identifier, null, null, ioDirection);
         this.ioSignalImpl = new IoSignalImpl(this, uri);
-        setAddress(seizeAddress(uri));
     }  
 
     @Override
@@ -67,6 +66,4 @@ abstract public class IoDecimal extends org.jpac.plc.IoDecimal implements IoSign
     public IOHandler getIoHandler(){
         return this.ioSignalImpl.ioHandler;
     }
-    
-    abstract protected Address seizeAddress(URI uri) throws InconsistencyException;
 }
