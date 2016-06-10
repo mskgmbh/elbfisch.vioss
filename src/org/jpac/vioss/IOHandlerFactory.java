@@ -34,12 +34,14 @@ import java.util.List;
 import org.apache.log4j.Logger;
 import org.jpac.configuration.StringProperty;
 import org.jpac.Address;
+import org.jpac.configuration.Configuration;
 
 /**
  * Maintains all IOHandler's used in a given Elbfisch application 
  * @author berndschuster
  */
 public class IOHandlerFactory {
+    final  static String IOHANDLERPATH = "org..jpac..vioss.IOHandler";
     static public Logger Log = Logger.getLogger("jpac.vioss.IOHandler");    
     static List<IOHandler> instances;
     
@@ -65,13 +67,17 @@ public class IOHandlerFactory {
             String cyclicInputHandlerClass = null;
             try{
                 //seize the name of the input handler from the configuration file
-                cyclicInputHandlerClass = new StringProperty("org.jpac.vioss." + uri.getScheme()).get();
+                String scheme = uri.getScheme().replace(".","..");
+                cyclicInputHandlerClass = (String)Configuration.getInstance().getProperty(IOHANDLERPATH + "." + scheme);
+                if (cyclicInputHandlerClass == null){
+                    throw new ClassNotFoundException();
+                }
                 ClassLoader systemClassLoader = ClassLoader.getSystemClassLoader();
                 Class clazz = systemClassLoader.loadClass(cyclicInputHandlerClass);
                 Constructor c = clazz.getConstructor(URI.class);
                 //... and instantiate it using the uri provided.
                 ioHandler = (IOHandler) c.newInstance(uri);
-                //... and finally add to the list of io handlers
+                //... and finally add it to the list of io handlers
                 instances.add(ioHandler);
             }
             catch(Exception exc){

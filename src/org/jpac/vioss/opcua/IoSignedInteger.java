@@ -158,4 +158,9 @@ public class IoSignedInteger extends org.jpac.vioss.IoSignedInteger implements I
     public StatusCode getStatusCode() {
         return ioSignalImpl.statusCode;
     }
+    
+    @Override
+    public Object getErrorCode(){
+        return null;
+    }        
 }

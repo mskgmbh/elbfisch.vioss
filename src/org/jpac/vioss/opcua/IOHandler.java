@@ -58,7 +58,7 @@ import org.jpac.vioss.IllegalUriException;
  * @author berndschuster
  */
 public class IOHandler extends org.jpac.vioss.IOHandler{
-    private final static String             HANDLEDSCHEME             = "OPCUA";
+    private final static String             HANDLEDSCHEME             = "OPC.TCP";
     private final static double             DEFAULTPUBLISHINGINTERVAL = 100.0;//ms
     private final static TimestampsToReturn DEFAULTTIMESTAMPTORETURN  = TimestampsToReturn.Neither;
     private final static int                CONNECTIONRETRYTIME       = 1000;//ms         
@@ -317,7 +317,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
         StringBuilder epSuffix = new StringBuilder();
         String[] pathTokens = uri.getPath().substring(1).split("/");
         int numberOfEndpointRelatedTokens = pathTokens.length - 2; //last two tokens are /<namespace index>/<node identifier>
-        epPrefix = new StringBuilder("tcp.ip://" + uri.getHost() + (uri.getPort() != -1 ? ":" + uri.getPort() : ""));
+        epPrefix = new StringBuilder("opc.tcp://" + uri.getHost() + (uri.getPort() != -1 ? ":" + uri.getPort() : ""));
         for (int i = 0; i < numberOfEndpointRelatedTokens; i++ ){
             epSuffix.append("/").append(pathTokens[i]);
         }
@@ -384,9 +384,10 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
         
         @Override
         public void doIt() throws ProcessException {
-            boolean connected = false;
+            boolean connected    = false;
+            boolean errorOccured = false;
             
-            Log.info("establishing connection to server + " + getEndpointUrl() + " ...");
+            Log.info("establishing connection to server " + getEndpointUrl() + " ...");
             do{
                 try{
                     //check, if connection to server has already been established during this session
@@ -423,11 +424,19 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
                     }
                     if (Log.isDebugEnabled())Log.error("Error:", exc);
                 }
+                catch(Error exc){
+                    if  (connection != null){
+                        try{connection.close();}catch(Exception ex){/*ignore*/};
+                        connection = null;
+                    }
+                    Log.error("Error:", exc);
+                    errorOccured = true;
+                }
                 if (!connected){
                     try{Thread.sleep(CONNECTIONRETRYTIME);}catch(InterruptedException ex){/*cannot happen*/};                    
                 }
             }
-            while(!connected && !isTerminated());
+            while(!connected && !isTerminated() && !errorOccured);
             if (connected){
                 Log.info("... connection to server " + getEndpointUrl() + " established");            
             }

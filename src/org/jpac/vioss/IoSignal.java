@@ -26,8 +26,6 @@
 package org.jpac.vioss;
 
 import java.net.URI;
-import org.jpac.InconsistencyException;
-import org.jpac.plc.Address;
 
 /**
  *
@@ -35,4 +33,5 @@ import org.jpac.plc.Address;
  */
 public interface IoSignal extends org.jpac.plc.IoSignal{
     public URI getUri();
+    public Object getErrorCode();
 }

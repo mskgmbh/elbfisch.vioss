@@ -25,8 +25,6 @@
 
 package org.jpac.vioss.ads;
 
-import java.net.URI;
-
 /**
  *
  * @author berndschuster

@@ -54,6 +54,7 @@ public class IoCharString extends org.jpac.vioss.IoCharString implements IoSigna
     private boolean                  checkOutFaultLogged;
     private int                      length;
     private PlcString                plcString;
+    private AdsErrorCode             adsErrorCode;    
     
     public IoCharString(AbstractModule containingModule, String identifier, URI uri, IoDirection ioDirection, int length) throws SignalAlreadyExistsException, InconsistencyException, WrongUseException, StringLengthException{
         super(containingModule, identifier, uri, ioDirection);
@@ -66,8 +67,9 @@ public class IoCharString extends org.jpac.vioss.IoCharString implements IoSigna
         
     @Override
     public void checkIn() throws SignalAccessException, AddressException{
-        String stringValue = null;
-        if (getAdsReadVariableByHandle().getAdsResponse().getErrorCode() == AdsErrorCode.NoError){
+        String  stringValue = null;
+        adsErrorCode = getAdsReadVariableByHandle().getAdsResponse().getErrorCode();
+        if (adsErrorCode == AdsErrorCode.NoError){
             int actualLength = getAdsReadVariableByHandle().getAdsResponse().getLength();
             try{
                 plcString = getAdsReadVariableByHandle().getAdsResponse().getData().getSTRING(0, actualLength);        
@@ -86,12 +88,12 @@ public class IoCharString extends org.jpac.vioss.IoCharString implements IoSigna
             checkInFaultLogged = false;
        }
        else{
-           if (!checkInFaultLogged){
+            if (!checkInFaultLogged){
                Log.error(this + " got invalid due to ads Error " + adsReadVariableByHandle.getAdsResponse().getErrorCode());
                checkInFaultLogged = true;
-           }
-           invalidate();
-       }
+            }
+            invalidate();
+        }
     }
 
     @Override
@@ -106,8 +108,8 @@ public class IoCharString extends org.jpac.vioss.IoCharString implements IoSigna
             }
             catch(StringLengthException | SignalInvalidException exc){/*cannot happen*/}        
         }
-        AdsErrorCode adsError = getAdsWriteVariableByHandle().getAdsResponse().getErrorCode();
-        if (adsError != AdsErrorCode.NoError){
+        adsErrorCode = getAdsWriteVariableByHandle().getAdsResponse().getErrorCode();
+        if (adsErrorCode != AdsErrorCode.NoError){
             if (!checkOutFaultLogged){
                 checkOutFaultLogged = true;
                 Log.error(this + " cannot be propagated to plc due to ads Error " + getAdsWriteVariableByHandle().getAdsResponse().getErrorCode());
@@ -148,5 +150,10 @@ public class IoCharString extends org.jpac.vioss.IoCharString implements IoSigna
             adsReleaseHandle = new AdsReleaseHandle(adsGetSymbolHandleByName.getHandle());
         }
         return adsReleaseHandle;
+    }
+    
+    @Override
+    public Object getErrorCode(){
+        return adsErrorCode;
     }
 }

@@ -81,4 +81,10 @@ public class IoLogical extends org.jpac.vioss.IoLogical{
            invalidate();
        }
     }
+    
+    @Override
+    public Object getErrorCode(){
+        return null;
+    }
+    
 }

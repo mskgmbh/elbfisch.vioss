@@ -51,6 +51,7 @@ public class IoLogical extends org.jpac.vioss.IoLogical implements IoSignal{
     private AdsWriteVariableByHandle adsWriteVariableByHandle;
     private boolean                  checkInFaultLogged;
     private boolean                  checkOutFaultLogged;
+    private AdsErrorCode             adsErrorCode;
     
     public IoLogical(AbstractModule containingModule, String identifier, URI uri, IoDirection ioDirection) throws SignalAlreadyExistsException, InconsistencyException, WrongUseException{
         super(containingModule, identifier, uri, ioDirection);
@@ -62,7 +63,8 @@ public class IoLogical extends org.jpac.vioss.IoLogical implements IoSignal{
     @Override
     public void checkIn() throws SignalAccessException, AddressException{
         boolean booleanVal = false;
-        if (getAdsReadVariableByHandle().getAdsResponse().getErrorCode() == AdsErrorCode.NoError){
+        adsErrorCode = getAdsReadVariableByHandle().getAdsResponse().getErrorCode();
+        if (adsErrorCode == AdsErrorCode.NoError){
             booleanVal = getAdsReadVariableByHandle().getAdsResponse().getData().getBYTE(0) != 0;        
             try{
                 inCheck = true;
@@ -93,8 +95,8 @@ public class IoLogical extends org.jpac.vioss.IoLogical implements IoSignal{
         if (Log.isDebugEnabled() && isChanged()){
             try{Log.debug(this + " set to " + is(true));}catch(SignalInvalidException exc){/*cannot happen*/}
         }
-        AdsErrorCode adsError = getAdsWriteVariableByHandle().getAdsResponse().getErrorCode();
-        if (adsError != AdsErrorCode.NoError){
+        adsErrorCode = getAdsWriteVariableByHandle().getAdsResponse().getErrorCode();
+        if (adsErrorCode != AdsErrorCode.NoError){
             if (!checkOutFaultLogged){
                 checkOutFaultLogged = true;
                 Log.error(this + " cannot be propagated to plc due to ads Error " + getAdsWriteVariableByHandle().getAdsResponse().getErrorCode());
@@ -148,4 +150,10 @@ public class IoLogical extends org.jpac.vioss.IoLogical implements IoSignal{
         }
         return adsReleaseHandle;
     }
+    
+    @Override
+    public Object getErrorCode(){
+        return adsErrorCode;
+    }
+    
 }

@@ -160,4 +160,10 @@ public class IoCharString extends org.jpac.vioss.IoCharString implements IoSigna
     public StatusCode getStatusCode() {
         return ioSignalImpl.statusCode;
     }
+    
+    @Override
+    public Object getErrorCode(){
+        return null;
+    }
+    
 }

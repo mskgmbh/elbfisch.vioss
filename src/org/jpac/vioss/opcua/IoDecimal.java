@@ -159,4 +159,10 @@ public class IoDecimal extends org.jpac.vioss.IoDecimal implements IoSignal{
     public StatusCode getStatusCode() {
         return ioSignalImpl.statusCode;
     }
+    
+    @Override
+    public Object getErrorCode(){
+        return null;
+    }
+    
 }

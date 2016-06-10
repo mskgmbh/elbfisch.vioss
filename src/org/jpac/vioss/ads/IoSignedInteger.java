@@ -52,6 +52,7 @@ public class IoSignedInteger extends org.jpac.vioss.IoSignedInteger implements I
     private AdsWriteVariableByHandle adsWriteVariableByHandle;
     private boolean                  checkInFaultLogged;
     private boolean                  checkOutFaultLogged;
+    private AdsErrorCode             adsErrorCode;
     
     public IoSignedInteger(AbstractModule containingModule, String identifier, URI uri, IoDirection ioDirection) throws SignalAlreadyExistsException, InconsistencyException, WrongUseException{
         super(containingModule, identifier, uri, ioDirection);
@@ -63,7 +64,8 @@ public class IoSignedInteger extends org.jpac.vioss.IoSignedInteger implements I
     @Override
     public void checkIn() throws SignalAccessException, AddressException, NumberOutOfRangeException{
         int intVal = 0;
-        if (getAdsReadVariableByHandle().getAdsResponse().getErrorCode() == AdsErrorCode.NoError){
+        adsErrorCode = getAdsReadVariableByHandle().getAdsResponse().getErrorCode();
+        if (adsErrorCode == AdsErrorCode.NoError){
             intVal = getAdsReadVariableByHandle().getAdsResponse().getData().getDINT(0);        
             try{
                 inCheck = true;
@@ -94,8 +96,8 @@ public class IoSignedInteger extends org.jpac.vioss.IoSignedInteger implements I
         if (Log.isDebugEnabled() && isChanged()){
             try{Log.debug(this + " set to " + get());}catch(SignalInvalidException exc){/*cannot happen*/}
         }
-        AdsErrorCode adsError = getAdsWriteVariableByHandle().getAdsResponse().getErrorCode();
-        if (adsError != AdsErrorCode.NoError){
+        adsErrorCode = getAdsWriteVariableByHandle().getAdsResponse().getErrorCode();
+        if (adsErrorCode != AdsErrorCode.NoError){
             if (!checkOutFaultLogged){
                 checkOutFaultLogged = true;
                 Log.error(this + " cannot be propagated to plc due to ads Error " + getAdsWriteVariableByHandle().getAdsResponse().getErrorCode());
@@ -137,4 +139,10 @@ public class IoSignedInteger extends org.jpac.vioss.IoSignedInteger implements I
         }
         return adsReleaseHandle;
     }
+    
+    @Override
+    public Object getErrorCode(){
+        return adsErrorCode;
+    }
+    
 }

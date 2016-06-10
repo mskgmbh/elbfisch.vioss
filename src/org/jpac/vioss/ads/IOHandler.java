@@ -96,7 +96,9 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
                     break;
                 case TRANSCEIVING:
                     try{
-                        transceiving();
+                        if(!transceiving()){
+                           throw new IOException("at least one ads signal could not properly be transferred.");
+                        }
                     }
                     catch(IOException exc){
                         Log.error("Error: ", exc);
@@ -210,6 +212,8 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
      */
     protected boolean transceiving() throws IOException, WrongUseException, SignalAccessException, AddressException, NumberOutOfRangeException{
         AdsState adsState;
+        boolean  allSignalsProperlyTransferred = true;
+        
         adsReadState.transact(connection);
         adsState = adsReadState.getAdsState();
         if (adsState == AdsState.Run || adsState == AdsState.Stop){
@@ -217,7 +221,10 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
                 readVariablesByHandle.transact(connection);
                 //propagate input signals
                 for(org.jpac.plc.IoSignal ios: getInputSignals()){
-                    ios.checkIn();
+                    ((org.jpac.vioss.IoSignal)ios).checkIn();
+                    if (((org.jpac.vioss.IoSignal)ios).getErrorCode() != AdsErrorCode.NoError){
+                        allSignalsProperlyTransferred = false;
+                    }
                 }
             }
             //prepare output signals for propagation to plc
@@ -227,6 +234,9 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
                     ios.resetToBePutOut();
                     ios.checkOut();
                     writeVariablesByHandle.addAmsPacket(((IoSignal)ios).getAdsWriteVariableByHandle());
+                    if (((org.jpac.vioss.IoSignal)ios).getErrorCode() != AdsErrorCode.NoError){
+                        allSignalsProperlyTransferred = false;
+                    }
                 }
             }
             if (!writeVariablesByHandle.getAmsPackets().isEmpty()){
@@ -236,7 +246,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
         else{
             throw new IOException("ADS state changed to " + adsState);
         }
-        return true;
+        return allSignalsProperlyTransferred;
     };    
     
     protected boolean closingConnection() throws IOException, WrongUseException{
@@ -340,48 +350,56 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
         
         @Override
         public void doIt() throws ProcessException {
-            AdsState  adsState = AdsState.Undefined;
+            AdsState  adsState         = AdsState.Undefined;
+            boolean   exceptionOccured = false;
             
             connected = false;
             Log.info("establishing connection ...");
             do{
-                try{
-                    connection = new Connection(getUri().getHost());
-                    //wait, until plc is running
-                    do{
-                        adsReadState.transact(connection);
-                        adsState = adsReadState.getAdsState();
-                        if (adsState != AdsState.Run){
-                            if (Log.isDebugEnabled())Log.debug("current ADS state: " + adsState);
-                            try{Thread.sleep(CONNECTIONRETRYTIME);}catch(InterruptedException ex){/*cannot happen*/};
+                do{
+                    try{
+                        connection = new Connection(getUri().getHost());
+                        //wait, until plc is running
+                        do{
+                            adsReadState.transact(connection);
+                            adsState = adsReadState.getAdsState();
+                            if (adsState != AdsState.Run){
+                                if (Log.isDebugEnabled())Log.debug("current ADS state: " + adsState);
+                                try{Thread.sleep(CONNECTIONRETRYTIME);}catch(InterruptedException ex){/*cannot happen*/};
+                            }
                         }
+                        while(adsState != AdsState.Run);
+                        connected  = true;
                     }
-                    while(adsState != AdsState.Run);
-                    connected  = true;
+                    catch(Exception exc){
+                        if (Log.isDebugEnabled())Log.error("Error:", exc);
+                        try{Thread.sleep(CONNECTIONRETRYTIME);}catch(InterruptedException ex){/*cannot happen*/};
+                    }
                 }
-                catch(Exception exc){
-                    if (Log.isDebugEnabled())Log.error("Error:", exc);
-                    try{Thread.sleep(CONNECTIONRETRYTIME);}catch(InterruptedException ex){/*cannot happen*/};
+                while(!connected && !isTerminated());
+                if (connected && !isTerminated()){
+                    //try to retrieve variable handles
+                    try{
+                        prepareSignalsForTransfer();
+                        //retrieve ads handles
+                        retrieveAdsVariableHandlesByName.transact(connection);
+                        assignHandlesToSignals();
+                    }
+                    catch(Exception exc){
+                        logIoSignalsWithMissingHandle();        
+                        //close connection
+                        try{connection.close();}catch(Exception ex){};
+                        connection       = null;
+                        connected        = false;
+                        exceptionOccured = true;
+                        Log.error("Error:", exc);
+                    }
                 }
+                try{Thread.sleep(CONNECTIONRETRYTIME);}catch(InterruptedException ex){/*cannot happen*/};
             }
-            while(!connected && !isTerminated());
-            if (connected && !isTerminated()){
-                //try to retrieve variable handles
-                try{
-                    prepareSignalsForTransfer();
-                    //retrieve ads handles
-                    retrieveAdsVariableHandlesByName.transact(connection);
-                    assignHandlesToSignals();
-                    Log.info("... connection established");            
-                }
-                catch(Exception exc){
-                    logIoSignalsWithMissingHandle();        
-                    //close connection
-                    try{connection.close();}catch(Exception ex){};
-                    connection = null;
-                    connected  = false;
-                    Log.error("Error:", exc);
-                }
+            while(!connected && !isTerminated() && !exceptionOccured);
+            if (connected){
+                Log.info("... connection established");            
             }
         }
         

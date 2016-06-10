@@ -136,7 +136,9 @@ public class IoSignalImpl extends org.jpac.vioss.IoSignalImpl{
     
     public void checkOut() throws SignalAccessException, AddressException{
         Value   value = checkOutValueGetter.get();
-        writeDataValue  = new DataValue(new Variant(value != null ? value.getValue() : null), value != null ? StatusCode.GOOD : StatusCode.BAD);
+//        writeDataValue  = new DataValue(new Variant(value != null ? value.getValue() : null), value != null ? StatusCode.GOOD : StatusCode.BAD);
+//        writeDataValue  = new DataValue(new Variant(value.getValue()));
+        writeDataValue  = new DataValue(new Variant(value.getValue()), null, null);
     }
    
     public MonitoredItemCreateRequest getMonitoredItemCreateRequest() {

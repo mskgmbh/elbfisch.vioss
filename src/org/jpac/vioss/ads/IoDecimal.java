@@ -54,6 +54,7 @@ public class IoDecimal extends org.jpac.vioss.IoDecimal implements IoSignal{
     private boolean                  checkInFaultLogged;
     private boolean                  checkOutFaultLogged;
     private ByteBuffer               byteBuffer;
+    private AdsErrorCode             adsErrorCode;
     
     public IoDecimal(AbstractModule containingModule, String identifier, URI uri, IoDirection ioDirection) throws SignalAlreadyExistsException, InconsistencyException, WrongUseException{
         super(containingModule, identifier, uri, ioDirection);
@@ -66,7 +67,8 @@ public class IoDecimal extends org.jpac.vioss.IoDecimal implements IoSignal{
     @Override
     public void checkIn() throws SignalAccessException, AddressException, NumberOutOfRangeException{
         double doubleValue = 0.0;
-        if (getAdsReadVariableByHandle().getAdsResponse().getErrorCode() == AdsErrorCode.NoError){
+        adsErrorCode = getAdsReadVariableByHandle().getAdsResponse().getErrorCode();
+        if (adsErrorCode == AdsErrorCode.NoError){
             byteBuffer.put(getAdsReadVariableByHandle().getAdsResponse().getData().getBytes());   
             doubleValue = byteBuffer.getDouble();
             try{
@@ -99,8 +101,8 @@ public class IoDecimal extends org.jpac.vioss.IoDecimal implements IoSignal{
         if (Log.isDebugEnabled() && isChanged()){
             try{Log.debug(this + " set to " + get());}catch(SignalInvalidException exc){/*cannot happen*/}
         }
-        AdsErrorCode adsError = getAdsWriteVariableByHandle().getAdsResponse().getErrorCode();
-        if (adsError != AdsErrorCode.NoError){
+        adsErrorCode = getAdsWriteVariableByHandle().getAdsResponse().getErrorCode();
+        if (adsErrorCode != AdsErrorCode.NoError){
             if (!checkOutFaultLogged){
                 checkOutFaultLogged = true;
                 Log.error(this + " cannot be propagated to plc due to ads Error " + getAdsWriteVariableByHandle().getAdsResponse().getErrorCode());
@@ -142,4 +144,9 @@ public class IoDecimal extends org.jpac.vioss.IoDecimal implements IoSignal{
         }
         return adsReleaseHandle;
     }
+    
+    @Override
+    public Object getErrorCode(){
+        return adsErrorCode;
+    }    
 }

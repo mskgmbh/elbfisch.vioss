@@ -157,4 +157,9 @@ public class IoLogical extends org.jpac.vioss.IoLogical implements IoSignal{
     public StatusCode getStatusCode() {
         return ioSignalImpl.statusCode;
     }
+        
+    @Override
+    public Object getErrorCode(){
+        return null;
+    }    
 }

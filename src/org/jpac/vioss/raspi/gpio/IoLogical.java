@@ -181,4 +181,9 @@ public class IoLogical extends org.jpac.vioss.IoLogical {
             outCheck = false;
         }
     }
+    
+    @Override
+    public Object getErrorCode(){
+        return null;
+    }        
 }
