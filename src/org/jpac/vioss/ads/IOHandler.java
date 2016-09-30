@@ -45,23 +45,26 @@ import org.jpac.vioss.IllegalUriException;
  * @author berndschuster
  */
 public class IOHandler extends org.jpac.vioss.IOHandler{
-    private final static String  HANDLEDSCHEME       = "ADS";
-    private final static int     TRANSMISSIONTIMEOUT = 1000;//ms
-    private final static int     CONNECTIONRETRYTIME = 1000;//ms         
+    private final static String  HANDLEDSCHEME                = "ADS";
+    private final static int     TRANSMISSIONTIMEOUT          = 1000;//ms
+    private final static int     CONNECTIONRETRYTIME          = 1000;//ms  
+    private final static int     NUMBEROFREADWRITESPERREQUEST = 100;
+    private final static int     NUMBEROFREADSPERREQUEST      = 200;
+    private final static int     NUMBEROFWRITESPERREQUEST     = 200;
 
     public enum State            {IDLE, CONNECTING, TRANSCEIVING, CLOSINGCONNECTION, STOPPED};  
     
-    private State                state;
-    private Connection           connection;
-    private ConnectionRunner     connectionRunner;
-    private boolean              connected;
-    private boolean              connecting;
-    private AdsReadWriteMultiple retrieveAdsVariableHandlesByName;
-    private AdsReadMultiple      readVariablesByHandle;
-    private AdsWriteMultiple     writeVariablesByHandle;
-    private AdsWriteMultiple     releaseHandles;
-    private AdsReadState         adsReadState;
-    private boolean              adsStateNotRunLogged;
+    private State                     state;
+    private Connection                connection;
+    private ConnectionRunner          connectionRunner;
+    private boolean                   connected;
+    private boolean                   connecting;
+    private ReadWriteMultipleInChunks retrieveAdsVariableHandlesByName;
+    private ReadMultipleInChunks      readVariablesByHandle;
+    private WriteMultipleInChunks     writeVariablesByHandle;
+    private WriteMultipleInChunks     releaseHandles;
+    private AdsReadState              adsReadState;
+    private boolean                   adsStateNotRunLogged;
         
     public IOHandler(URI uri) throws IllegalUriException {
         super(uri);
@@ -182,7 +185,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     protected boolean connecting() throws WrongUseException, InconsistencyException{
         boolean done = false;
         if (!connected){
-            if (!connecting){
+            if (!connecting){                
                 connectionRunner.start();
                 connecting = true;
             }
@@ -269,10 +272,10 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     
     protected void prepareSignalsForTransfer(){
         //collect signals to be transceived ...
-        writeVariablesByHandle           = new AdsWriteMultiple();
-        readVariablesByHandle            = new AdsReadMultiple();
-        retrieveAdsVariableHandlesByName = new AdsReadWriteMultiple();
-        releaseHandles                   = new AdsWriteMultiple();
+        writeVariablesByHandle           = new WriteMultipleInChunks(NUMBEROFWRITESPERREQUEST);
+        readVariablesByHandle            = new ReadMultipleInChunks(NUMBEROFREADSPERREQUEST);
+        retrieveAdsVariableHandlesByName = new ReadWriteMultipleInChunks(NUMBEROFREADWRITESPERREQUEST);
+        releaseHandles                   = new WriteMultipleInChunks(NUMBEROFWRITESPERREQUEST);
         for (org.jpac.plc.IoSignal ios: getInputSignals()){
             retrieveAdsVariableHandlesByName.addAdsReadWrite(((IoSignal)ios).getAdsGetSymbolHandleByName());
             releaseHandles.addAmsPacket(((IoSignal)ios).getAdsReleaseHandle());
@@ -354,7 +357,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
             boolean   exceptionOccured = false;
             
             connected = false;
-            Log.info("establishing connection ...");
+            Log.info("establishing connection for " + getInputSignals().size() + " input and " + getOutputSignals().size() + " output signals ...");
             do{
                 do{
                     try{
@@ -399,7 +402,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
             }
             while(!connected && !isTerminated() && !exceptionOccured);
             if (connected){
-                Log.info("... connection established");            
+                Log.info("... connection established as " + connection.getLocalAmsNetId());            
             }
         }
         

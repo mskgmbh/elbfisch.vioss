@@ -150,7 +150,11 @@ abstract public class AmsPacket {
            throw new IOException("Ads Response Error: " + getAdsResponse().getErrorCode());           
        }
        if (connection.getInputStream().available() > 0){
-           throw new IOException("inconsistent response received. Some trailing bytes left: " + connection.getInputStream().available());           
+           Log.error("inconsistent response received. Some trailing bytes left: " + connection.getInputStream().available());         
+           //Occasionally some bytes are left inside the stream even though the expected data has been properly read.
+           //Drop them to clear stream for next request
+           connection.getInputStream().skip(connection.getInputStream().available());
+           //throw new IOException("inconsistent response received. Some trailing bytes left: " + connection.getInputStream().available());         
        }
        if (Log.isDebugEnabled())Log.debug("read " + getClass().getSimpleName());
     }

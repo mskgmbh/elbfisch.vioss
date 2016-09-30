@@ -29,7 +29,10 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.NetworkInterface;
 import java.net.Socket;
+import java.util.Enumeration;
+import java.util.StringTokenizer;
 import org.apache.log4j.Logger;
 import org.jpac.vioss.InvalidAddressException;
 import org.jpac.vioss.LittleEndianDataInputStream;
@@ -42,7 +45,7 @@ public class Connection{
     static Logger Log = Logger.getLogger("jpac.vioss.ads");
     
     static  final int                    ADSPORT           = 0xBF02; //48898
-    static  final int                    SOCKETTIMEOUT     = 1000;   //ms
+    static  final int                    SOCKETTIMEOUT     = 5000;   //ms
     static  final String                 AMSNETIDEXTENSION = ".1.1";
     static  final AmsPortNr              DEFAULTAMSPORTNR  = AmsPortNr.PlcRuntimeSystem1;
     
@@ -50,7 +53,8 @@ public class Connection{
     private LittleEndianDataInputStream  in;
     private LittleEndianDataOutputStream out;
 
-    protected String                     host;
+    protected String                     localHost;
+    protected String                     plcHost;
     protected AmsNetId                   targetAmsNetId;
     protected AmsNetId                   localAmsNetId;
     protected AmsPortNr                  targetAmsPortNr;
@@ -69,33 +73,94 @@ public class Connection{
      * 
      */
     public Connection(AmsNetId amsNetId, AmsPortNr amsPortNr) throws IOException, InvalidAddressException {
-        this.host       = amsNetId.getIPv4();
-        targetAmsNetId  = amsNetId;
-        targetAmsPortNr = amsPortNr;
-        localAmsNetId   = new AmsNetId(InetAddress.getLocalHost().getHostAddress() + AMSNETIDEXTENSION);
-        localAmsPortNr  = AmsPortNr.Local;
-        uniqueInvokeId  = 0;
+        this.plcHost       = amsNetId.getIPv4();
+        targetAmsNetId     = amsNetId;
+        targetAmsPortNr    = amsPortNr;
+        localAmsNetId      = new AmsNetId(InetAddress.getLocalHost().getHostAddress() + AMSNETIDEXTENSION);
+        localAmsPortNr     = AmsPortNr.Local;
+        uniqueInvokeId     = 0;
         initialize();
     }
             
     /**
      * an instance of Connection is created and the connection to given the plc is initiated immediately
-     * REMARKS: AMS net id will be build on basis of the given given host net id by appending ".1.1"
-     *          AMS port number is assumed to be 851
-     *          connection to the remote ads router is done on port 0xBF02
+     * REMARKS: AMS net id will be build on basis of the given given plcHost net id by appending ".1.1"
+     *     AMS port number is assumed to be 851
+     *     connection to the remote ads router is done on port 0xBF02
      * @param host: ip address of the plc (e.g. 192.168.0.52)
      * @throws IOException
      * @throws org.jpac.vioss.InvalidAddressException
      * 
      */
-    public Connection(String host) throws IOException, InvalidAddressException {
-        this.host       = host;
-        targetAmsNetId  = new AmsNetId(InetAddress.getByName(host).getHostAddress() + AMSNETIDEXTENSION);;
+    public Connection(String plcHost) throws IOException, InvalidAddressException {
+        //find the local inet address which best fit to the plcHost address
+        //presumed that both recide in the same subnet
+        long bestMatch            = Long.MAX_VALUE;
+        String bestMatchedLocalIp = "";
+        Enumeration nis = NetworkInterface.getNetworkInterfaces();
+        while(nis.hasMoreElements()){
+            NetworkInterface ni =(NetworkInterface) nis.nextElement();
+            Enumeration ias = ni.getInetAddresses();
+            while(ias.hasMoreElements()) {
+                InetAddress ia    = (InetAddress) ias.nextElement();
+                long        match = matchOctets(ia.getHostAddress(), plcHost);
+                if (match < bestMatch){
+                    bestMatch = match;
+                    bestMatchedLocalIp = ia.getHostAddress();
+                }
+            }
+        }
+        this.localHost  = bestMatchedLocalIp;
+        this.plcHost    = plcHost;
+        targetAmsNetId  = new AmsNetId(InetAddress.getByName(plcHost).getHostAddress() + AMSNETIDEXTENSION);;
         targetAmsPortNr = DEFAULTAMSPORTNR;
-        localAmsNetId   = new AmsNetId(InetAddress.getLocalHost().getHostAddress() + AMSNETIDEXTENSION);
+        localAmsNetId   = new AmsNetId(InetAddress.getByName(localHost).getHostAddress() + AMSNETIDEXTENSION);
         localAmsPortNr  = AmsPortNr.Local;
         initialize();
     }
+    
+    private long matchOctets(String localHost, String plcHost) throws InvalidAddressException{
+        long matchValue = 0;
+        
+        try{
+            int[] octetsLocalHost = getOctets(localHost);
+            int[] octetsPlcHost   = getOctets(plcHost);
+            if (octetsLocalHost.length == octetsPlcHost.length){
+                for (int i = 0; i < octetsPlcHost.length; i++){
+                    matchValue = 256 * matchValue + Math.abs(octetsPlcHost[i] - octetsLocalHost[i]);
+                }
+            }
+            else{
+                matchValue = Long.MAX_VALUE;            
+            }
+        }
+        catch(InvalidAddressException exc){
+            matchValue = Long.MAX_VALUE;
+        }
+        return matchValue;
+    }
+    
+    protected int[] getOctets(String inetAddress) throws InvalidAddressException{
+        StringTokenizer st  = new StringTokenizer(inetAddress, ".");
+        int             numberOfTokens = st.countTokens(); 
+        int[]           octets = new int[4];
+        if (numberOfTokens != 4){
+            throw new InvalidAddressException("invalid net id: '" + inetAddress + "'");            
+        }
+        for(int i = 0; i < numberOfTokens; i++ ){
+            try{
+                int number = Integer.parseUnsignedInt(st.nextToken());
+                if (number > 0x00FF){
+                    throw new InvalidAddressException("invalid net id: '" + inetAddress + "'"); 
+                }
+                octets[i] = (byte)number;
+            }
+            catch(NumberFormatException exc){
+                throw new InvalidAddressException("invalid net id: '" + inetAddress + "'");                 
+            }
+        }
+        return octets;
+    }    
 
     /**
      *  used to initialize the connection.
@@ -104,7 +169,7 @@ public class Connection{
      * @throws IOException in case of io error in thge connection or streams
      */
     public synchronized void initialize() throws IOException {
-        InetAddress addr = InetAddress.getByName(host);
+        InetAddress addr = InetAddress.getByName(plcHost);
         try {
             // create a tcp/ip socket for basic connectivity
             socket = new Socket(addr, ADSPORT);
@@ -196,6 +261,6 @@ public class Connection{
     
     @Override
     public String toString(){
-        return getClass().getSimpleName() + "(" + host + ")";
+        return getClass().getSimpleName() + "(" + plcHost + ")";
     }
 }
