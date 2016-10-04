@@ -93,6 +93,9 @@ public class IoSignedInteger extends org.jpac.vioss.IoSignedInteger implements I
         if (isValid()){
             try{getAdsWriteVariableByHandle().getData().setDINT(0, get());}catch(SignalInvalidException exc){/*cannot happen*/}        
         }
+        else{
+            try{getAdsWriteVariableByHandle().getData().setDINT(0, Integer.MIN_VALUE);}catch(SignalInvalidException exc){/*cannot happen*/}                    
+        }
         if (Log.isDebugEnabled() && isChanged()){
             try{Log.debug(this + " set to " + get());}catch(SignalInvalidException exc){/*cannot happen*/}
         }

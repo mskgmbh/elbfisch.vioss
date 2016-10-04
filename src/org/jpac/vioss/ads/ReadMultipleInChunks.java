@@ -36,8 +36,8 @@ public class ReadMultipleInChunks {
     protected ArrayList<AmsPacket>       amsPackets;
     protected ArrayList<AdsReadMultiple> readMultipes;
     
-    public ReadMultipleInChunks(int maxNumberOfReadWritesPerChunk){
-        this.maxNumberOfPacketsPerChunk = maxNumberOfReadWritesPerChunk;
+    public ReadMultipleInChunks(int maxNumberOfReadPerChunk){
+        this.maxNumberOfPacketsPerChunk = maxNumberOfReadPerChunk;
         this.amsPackets                 = new ArrayList<>();
     }
     

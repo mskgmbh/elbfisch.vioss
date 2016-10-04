@@ -316,7 +316,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     
     @Override
     public boolean isFinished() {
-        return inputOutputProcessImageRunner.isFinished(); //TODO && outputProcessImageRunner.isFinished();
+        return inputOutputProcessImageRunner.isFinished();
     }
 
     @Override

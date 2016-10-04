@@ -98,6 +98,10 @@ public class IoDecimal extends org.jpac.vioss.IoDecimal implements IoSignal{
             try{byteBuffer.putDouble(get());}catch(SignalInvalidException exc){/*cannot happen*/}        
             getAdsWriteVariableByHandle().getData().setBytes(byteBuffer.array());
         }
+        else{
+            byteBuffer.putDouble(Double.MIN_VALUE);        
+            getAdsWriteVariableByHandle().getData().setBytes(byteBuffer.array());
+        }
         if (Log.isDebugEnabled() && isChanged()){
             try{Log.debug(this + " set to " + get());}catch(SignalInvalidException exc){/*cannot happen*/}
         }

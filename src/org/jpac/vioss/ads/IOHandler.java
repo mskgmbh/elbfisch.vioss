@@ -61,8 +61,11 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     private boolean                   connecting;
     private ReadWriteMultipleInChunks retrieveAdsVariableHandlesByName;
     private ReadMultipleInChunks      readVariablesByHandle;
+    //private AdsReadMultiple           readVariablesByHandle;
     private WriteMultipleInChunks     writeVariablesByHandle;
+    //private AdsWriteMultiple          writeVariablesByHandle;
     private WriteMultipleInChunks     releaseHandles;
+    //private AdsWriteMultiple          releaseHandles;
     private AdsReadState              adsReadState;
     private boolean                   adsStateNotRunLogged;
         
@@ -220,6 +223,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
         adsReadState.transact(connection);
         adsState = adsReadState.getAdsState();
         if (adsState == AdsState.Run || adsState == AdsState.Stop){
+            //read input signals
             if (!readVariablesByHandle.getAmsPackets().isEmpty()){
                 readVariablesByHandle.transact(connection);
                 //propagate input signals
@@ -230,20 +234,21 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
                     }
                 }
             }
-            //prepare output signals for propagation to plc
-            writeVariablesByHandle.clearAmsPackets();
-            for(org.jpac.plc.IoSignal ios: getOutputSignals()){
-                if (ios.isToBePutOut()){
-                    ios.resetToBePutOut();
-                    ios.checkOut();
-                    writeVariablesByHandle.addAmsPacket(((IoSignal)ios).getAdsWriteVariableByHandle());
-                    if (((org.jpac.vioss.IoSignal)ios).getErrorCode() != AdsErrorCode.NoError){
+            //put out output signals
+            if (!writeVariablesByHandle.getAmsPackets().isEmpty()){
+                for(org.jpac.plc.IoSignal ios: getOutputSignals()){
+                    if (ios.isToBePutOut()){
+                        ios.resetToBePutOut();
+                        ios.checkOut();
+                    }
+                }
+                writeVariablesByHandle.transact(connection);
+                for(org.jpac.plc.IoSignal ios: getOutputSignals()){
+                    AdsErrorCode adsErrorCode = ((org.jpac.vioss.ads.IoSignal)ios).getAdsWriteVariableByHandle().getAdsResponse().getErrorCode();
+                    if (adsErrorCode != AdsErrorCode.NoError){
                         allSignalsProperlyTransferred = false;
                     }
                 }
-            }
-            if (!writeVariablesByHandle.getAmsPackets().isEmpty()){
-                writeVariablesByHandle.transact(connection);
             }
         }
         else{
@@ -273,19 +278,23 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     protected void prepareSignalsForTransfer(){
         //collect signals to be transceived ...
         writeVariablesByHandle           = new WriteMultipleInChunks(NUMBEROFWRITESPERREQUEST);
+        //writeVariablesByHandle           = new AdsWriteMultiple();
         readVariablesByHandle            = new ReadMultipleInChunks(NUMBEROFREADSPERREQUEST);
+        //readVariablesByHandle            = new AdsReadMultiple();
         retrieveAdsVariableHandlesByName = new ReadWriteMultipleInChunks(NUMBEROFREADWRITESPERREQUEST);
         releaseHandles                   = new WriteMultipleInChunks(NUMBEROFWRITESPERREQUEST);
+        //releaseHandles                   = new AdsWriteMultiple();
         for (org.jpac.plc.IoSignal ios: getInputSignals()){
             retrieveAdsVariableHandlesByName.addAdsReadWrite(((IoSignal)ios).getAdsGetSymbolHandleByName());
             releaseHandles.addAmsPacket(((IoSignal)ios).getAdsReleaseHandle());
             readVariablesByHandle.addAmsPacket(((IoSignal)ios).getAdsReadVariableByHandle());
         }
         for (org.jpac.plc.IoSignal ios: getOutputSignals()){
-            if (!retrieveAdsVariableHandlesByName.getAdsReadWrites().contains(ios)){//avoid int/out signals to be collected twice
+            if (!retrieveAdsVariableHandlesByName.getAdsReadWrites().contains(ios)){//avoid in/out signals to be collected twice
                 retrieveAdsVariableHandlesByName.addAdsReadWrite(((IoSignal)ios).getAdsGetSymbolHandleByName());
                 releaseHandles.addAmsPacket(((IoSignal)ios).getAdsReleaseHandle());
             }
+            writeVariablesByHandle.addAmsPacket(((IoSignal)ios).getAdsWriteVariableByHandle());
         }        
     }
     

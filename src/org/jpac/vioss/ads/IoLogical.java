@@ -92,6 +92,9 @@ public class IoLogical extends org.jpac.vioss.IoLogical implements IoSignal{
         if (isValid()){
             try{getAdsWriteVariableByHandle().getData().setBYTE(0, is(true) ? 1 : 0);}catch(Exception exc){/*cannot happen*/}        
         }
+        else{
+            try{getAdsWriteVariableByHandle().getData().setBYTE(0, 0);}catch(Exception exc){/*cannot happen*/}                    
+        }
         if (Log.isDebugEnabled() && isChanged()){
             try{Log.debug(this + " set to " + is(true));}catch(SignalInvalidException exc){/*cannot happen*/}
         }

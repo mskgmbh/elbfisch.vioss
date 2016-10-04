@@ -36,8 +36,8 @@ public class WriteMultipleInChunks {
     protected ArrayList<AmsPacket>        amsPackets;
     protected ArrayList<AdsWriteMultiple> writeMultipes;
     
-    public WriteMultipleInChunks(int maxNumberOfReadWritesPerChunk){
-        this.maxNumberOfPacketsPerChunk = maxNumberOfReadWritesPerChunk;
+    public WriteMultipleInChunks(int maxNumberOfWritesPerChunk){
+        this.maxNumberOfPacketsPerChunk = maxNumberOfWritesPerChunk;
         this.amsPackets                 = new ArrayList<>();
     }
     
@@ -49,13 +49,9 @@ public class WriteMultipleInChunks {
         return this.amsPackets;
     }
     
-    public void clearAmsPackets(){
-        this.amsPackets.clear();
-    }
-    
     public void transact(Connection connection) throws IOException{
         if (writeMultipes == null){
-            //build chunks of requests according to the maximum number of requests per 
+            //build chunks of requests according to the maximum number of requests per transaction
             int                  numberOfChunks  = (amsPackets.size() + maxNumberOfPacketsPerChunk - 1) / maxNumberOfPacketsPerChunk;
             int                  chunkSize       = amsPackets.size() / numberOfChunks;
             int                  actualChunkSize = 0; 
