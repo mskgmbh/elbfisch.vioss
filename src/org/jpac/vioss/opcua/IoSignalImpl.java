@@ -92,6 +92,9 @@ public class IoSignalImpl extends org.jpac.vioss.IoSignalImpl{
         if (this.nameSpaceIndex == null){
             throw new InconsistencyException(("illegal namespace index in uri '" + uri + "'"));
         }
+        if (!path.hasMoreTokens()){
+            throw new InconsistencyException(("missing signal identifier '" + uri + "'"));            
+        }
         this.plcIdentifier             = path.nextToken();
         this.nodeId                    = new NodeId(nameSpaceIndex, plcIdentifier);
         this.checkInFaultLogged        = false;
