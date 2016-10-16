@@ -76,7 +76,6 @@ public class IoDecimal extends org.jpac.vioss.IoDecimal implements IoSignal{
                     }
                 });
         this.ioSignalImpl.setCheckOutValueGetter(() -> {return isValid() ? getValue() : null;});
-        Log.error("!!!!!!!!!!!!!!   IoDecimal is not tested  yet");//TODO
     }
         
     public IoDecimal(AbstractModule containingModule, String identifier, URI uri, IoDirection ioDirection) throws SignalAlreadyExistsException, InconsistencyException, WrongUseException{
