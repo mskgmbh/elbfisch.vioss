@@ -27,7 +27,8 @@
 package org.jpac.vioss.ads;
 
 import java.io.IOException;
-import org.apache.log4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 import org.jpac.WrongUseException;
 
 /**
@@ -35,7 +36,7 @@ import org.jpac.WrongUseException;
  * @author berndschuster
  */
 abstract public class AmsPacket {
-    static public Logger Log = Logger.getLogger("jpac.vioss.ads");
+    static public Logger Log = LoggerFactory.getLogger("jpac.vioss.ads");
     
     protected AmsTcpHeader requestAmsTcpHeader;
     protected AmsTcpHeader responseAmsTcpHeader;

@@ -26,7 +26,8 @@
 package org.jpac.vioss;
 
 import java.net.URI;
-import org.apache.log4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 import org.jpac.AbstractModule;
 import org.jpac.InconsistencyException;
 import org.jpac.SignalAlreadyExistsException;
@@ -39,7 +40,7 @@ import org.jpac.plc.StringLengthException;
  * @author berndschuster
  */
 abstract public class IoCharString extends org.jpac.plc.IoCharString implements IoSignal{
-    static public Logger Log = Logger.getLogger("jpac.Signal");
+    static public Logger Log = LoggerFactory.getLogger("jpac.Signal");
 
     private IoSignalImpl ioSignalImpl;
     

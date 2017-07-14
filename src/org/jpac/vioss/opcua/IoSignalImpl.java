@@ -61,7 +61,7 @@ public class IoSignalImpl extends org.jpac.vioss.IoSignalImpl{
     public UaMonitoredItem monitoredItem;
     public DataValue       monitoredItemValue;
     public Boolean         monitoredItemValueUpdated;
-    public double          samplingRate;
+    public double          samplingInterval;
     public ExtensionObject extensionObject;
     public int             queueSize;
     public boolean         discardOldest;
@@ -77,13 +77,14 @@ public class IoSignalImpl extends org.jpac.vioss.IoSignalImpl{
     private Consumer<Variant> checkInValueSetter;
     private Supplier<Value>   checkOutValueGetter;
 
-    public IoSignalImpl(IoSignal containingSignal, URI uri, double samplingRate, ExtensionObject extensionObject, int queueSize, boolean discardOldest) throws InconsistencyException, WrongUseException {
+    public IoSignalImpl(IoSignal containingSignal, URI uri, double samplingInterval, ExtensionObject extensionObject, int queueSize, boolean discardOldest) throws InconsistencyException, WrongUseException {
         super(containingSignal, uri);
-        this.samplingRate    = samplingRate;
-        this.extensionObject = extensionObject;
-        this.queueSize       = queueSize;
-        this.discardOldest   = discardOldest;
-        StringTokenizer path = new StringTokenizer(uri.getPath().substring(1),"/");
+        this.samplingInterval = samplingInterval;
+        this.extensionObject  = extensionObject;
+        this.queueSize        = queueSize;
+        this.discardOldest    = discardOldest;
+        StringTokenizer path  = new StringTokenizer(uri.getPath().substring(1),"/");
+        
         try{this.nameSpaceIndex  = Integer.parseInt(path.nextToken());}catch(NumberFormatException exc){/*nothing to do*/};        
         if (this.nameSpaceIndex == null){
             //skip possible instance identifier
@@ -129,7 +130,7 @@ public class IoSignalImpl extends org.jpac.vioss.IoSignalImpl{
            }
            else{
                if (!checkInFaultLogged){
-                   Log.error(this + " got invalid due to server side error");
+                   Log.error(uri + " got invalid due to server side error: " + actualMonitoredItem.getStatusCode());
                    checkInFaultLogged = true;
                }
                containingSignal.invalidate();
@@ -147,7 +148,7 @@ public class IoSignalImpl extends org.jpac.vioss.IoSignalImpl{
     public MonitoredItemCreateRequest getMonitoredItemCreateRequest() {
         MonitoredItemCreateRequest mcr = null;
         try{
-            MonitoringParameters params = new MonitoringParameters(uint(((IOHandler)getIOHandler()).getInputSignals().indexOf(getContainingSignal())), samplingRate, extensionObject, uint(queueSize), discardOldest);       
+            MonitoringParameters params = new MonitoringParameters(uint(((IOHandler)getIOHandler()).getInputSignals().indexOf(getContainingSignal())), samplingInterval, extensionObject, uint(queueSize), discardOldest);       
             mcr                         = new MonitoredItemCreateRequest(readValueId, MonitoringMode.Reporting, params);
         }
         catch(InconsistencyException exc){

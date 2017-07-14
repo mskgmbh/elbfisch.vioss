@@ -33,7 +33,8 @@ import java.net.NetworkInterface;
 import java.net.Socket;
 import java.util.Enumeration;
 import java.util.StringTokenizer;
-import org.apache.log4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 import org.jpac.vioss.InvalidAddressException;
 import org.jpac.vioss.LittleEndianDataInputStream;
 import org.jpac.vioss.LittleEndianDataOutputStream;
@@ -42,7 +43,7 @@ import org.jpac.vioss.LittleEndianDataOutputStream;
  *
  */
 public class Connection{
-    static Logger Log = Logger.getLogger("jpac.vioss.ads");
+    static Logger Log = LoggerFactory.getLogger("jpac.vioss.ads");
     
     static  final int                    ADSPORT           = 0xBF02; //48898
     static  final int                    SOCKETTIMEOUT     = 5000;   //ms

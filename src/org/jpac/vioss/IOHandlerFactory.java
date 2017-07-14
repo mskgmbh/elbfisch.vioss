@@ -31,7 +31,8 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import org.apache.log4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 import org.jpac.configuration.StringProperty;
 import org.jpac.Address;
 import org.jpac.configuration.Configuration;
@@ -42,7 +43,7 @@ import org.jpac.configuration.Configuration;
  */
 public class IOHandlerFactory {
     final  static String IOHANDLERPATH = "org..jpac..vioss.IOHandler";
-    static public Logger Log = Logger.getLogger("jpac.vioss.IOHandler");    
+    static public Logger Log = LoggerFactory.getLogger("jpac.vioss.IOHandler");    
     static List<IOHandler> instances;
     
     /**

@@ -27,14 +27,15 @@
 package org.jpac.vioss.ads;
 
 import java.io.IOException;
-import org.apache.log4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
 /**
  *
  * @author berndschuster
  */
 public class AmsTcpHeader {
-    static public Logger Log = Logger.getLogger("jpac.vioss.ads");
+    static public Logger Log = LoggerFactory.getLogger("jpac.vioss.ads");
     
     private int     reserved;
     private Integer length;

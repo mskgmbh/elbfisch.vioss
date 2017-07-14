@@ -54,7 +54,7 @@ public class IoCharString extends org.jpac.vioss.IoCharString implements IoSigna
      * @param identifier        identifier of this signal
      * @param uri               uri, identifying the remote signal. Example "opc.tcp://localhost:12685/elbfisch/<namespaceindex>/<signal identifier>
      * @param ioDirection       input, output or both
-     * @param samplingRate      see OPC UA specification (MonitoringParameters)
+     * @param samplingInterval  see OPC UA specification (MonitoringParameters)
      * @param extensionObject   see OPC UA specification (MonitoringParameters)
      * @param queueSize         see OPC UA specification (MonitoringParameters)
      * @param discardOldest     see OPC UA specification (MonitoringParameters)
@@ -63,9 +63,9 @@ public class IoCharString extends org.jpac.vioss.IoCharString implements IoSigna
      * @throws WrongUseException 
      * @throws org.jpac.plc.StringLengthException 
      */    
-    public IoCharString(AbstractModule containingModule, String identifier, URI uri, IoDirection ioDirection, double samplingRate, ExtensionObject extensionObject, int queueSize, boolean discardOldest) throws SignalAlreadyExistsException, InconsistencyException, WrongUseException, StringLengthException{
+    public IoCharString(AbstractModule containingModule, String identifier, URI uri, IoDirection ioDirection, double samplingInterval, ExtensionObject extensionObject, int queueSize, boolean discardOldest) throws SignalAlreadyExistsException, InconsistencyException, WrongUseException, StringLengthException{
         super(containingModule, identifier, uri, ioDirection);
-        this.ioSignalImpl = new IoSignalImpl(this, uri, samplingRate, extensionObject, queueSize, discardOldest);
+        this.ioSignalImpl = new IoSignalImpl(this, uri, samplingInterval, extensionObject, queueSize, discardOldest);
         this.ioSignalImpl.setCheckInValueSetter(v -> {
                     try{
                         inCheck = true;

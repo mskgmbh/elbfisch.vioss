@@ -59,7 +59,7 @@ import org.jpac.vioss.IllegalUriException;
  */
 public class IOHandler extends org.jpac.vioss.IOHandler{
     private final static String             HANDLEDSCHEME             = "OPC.TCP";
-    private final static double             DEFAULTPUBLISHINGINTERVAL = 100.0;//ms
+    private final static double             DEFAULTPUBLISHINGINTERVAL = 10.0;//ms
     private final static TimestampsToReturn DEFAULTTIMESTAMPTORETURN  = TimestampsToReturn.Neither;
     private final static int                CONNECTIONRETRYTIME       = 1000;//ms         
 
@@ -169,7 +169,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
             state = State.CLOSINGCONNECTION;
             connectionRunner.terminate();
             if (connected){
-                //release ads handles
+                //release subscription handles
                 closingConnection();
                 //and close connection to plc
                 connection.close();
@@ -280,8 +280,11 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     protected void closingConnection(){
         boolean done = false;
         try{
-            //release subscription
-            subscription.deleteMonitoredItems(subscription.getMonitoredItems());
+            if (subscription != null){
+                //release subscription
+                subscription.deleteMonitoredItems(subscription.getMonitoredItems());
+                connection.getClient().getSubscriptionManager().deleteSubscription(subscription.getSubscriptionId());
+            }
         }
         finally{
             if(connected && connection != null){
@@ -409,11 +412,13 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
                             if (((IoSignal)ios).isRemotelyAvailable()){
                                 monitoredItemsRequestList.add(((IoSignal)ios).getMonitoredItemCreateRequest());
                             }
-                        }                    
-                        //subscribe input signals
-                        subscription   = connection.getClient().getSubscriptionManager().createSubscription(publishingTime).get();
-                        monitoredItems = subscription.createMonitoredItems(timestampsToReturn, monitoredItemsRequestList).get();
-                        assignMonitoredItemsToInputSignals();
+                        }
+                        if (monitoredItemsRequestList.size() > 0){
+                            //subscribe input signals
+                            subscription   = connection.getClient().getSubscriptionManager().createSubscription(publishingTime).get();
+                            monitoredItems = subscription.createMonitoredItems(timestampsToReturn, monitoredItemsRequestList).get();
+                            assignMonitoredItemsToInputSignals();
+                        }
                         connected  = true;                        
                     }
                 }

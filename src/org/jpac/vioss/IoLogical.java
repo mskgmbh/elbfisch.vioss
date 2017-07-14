@@ -26,7 +26,8 @@
 package org.jpac.vioss;
 
 import java.net.URI;
-import org.apache.log4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 import org.jpac.AbstractModule;
 import org.jpac.plc.Address;
 import org.jpac.InconsistencyException;
@@ -39,7 +40,7 @@ import org.jpac.plc.IoDirection;
  * @author berndschuster
  */
 abstract public class IoLogical extends org.jpac.plc.IoLogical implements IoSignal{
-    static public Logger Log = Logger.getLogger("jpac.Signal");
+    static public Logger Log = LoggerFactory.getLogger("jpac.Signal");
 
     private IoSignalImpl ioSignalImpl;
     

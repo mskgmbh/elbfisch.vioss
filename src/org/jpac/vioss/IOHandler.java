@@ -29,7 +29,8 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import org.apache.log4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 import org.jpac.Address;
 import org.jpac.CyclicTask;
 import org.jpac.JPac;
@@ -45,7 +46,7 @@ import org.jpac.plc.IoDirection;
  * @author berndschuster
  */
 abstract public class IOHandler implements CyclicTask{
-    static public Logger Log = Logger.getLogger("jpac.vioss.IOHandler");
+    static public Logger Log = LoggerFactory.getLogger("jpac.vioss.IOHandler");
     
     private URI             uri; 
     private List<IoSignal>  inputSignals;
