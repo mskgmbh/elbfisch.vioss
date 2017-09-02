@@ -73,8 +73,9 @@ public class IOHandlerFactory {
                 if (cyclicInputHandlerClass == null){
                     throw new ClassNotFoundException();
                 }
-                ClassLoader systemClassLoader = ClassLoader.getSystemClassLoader();
-                Class clazz = systemClassLoader.loadClass(cyclicInputHandlerClass);
+//                ClassLoader systemClassLoader = ClassLoader.getSystemClassLoader();
+//                Class clazz = systemClassLoader.loadClass(cyclicInputHandlerClass);
+                Class clazz = Class.forName(cyclicInputHandlerClass);
                 Constructor c = clazz.getConstructor(URI.class);
                 //... and instantiate it using the uri provided.
                 ioHandler = (IOHandler) c.newInstance(uri);
