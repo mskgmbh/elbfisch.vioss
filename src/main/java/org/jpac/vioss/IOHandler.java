@@ -121,6 +121,15 @@ abstract public class IOHandler implements CyclicTask{
             outputSignals.add(signal);
         }
     }
+    
+    public void discardSignal(IoSignal signal){
+        if (inputSignals.contains(signal)){
+            inputSignals.remove(signal);
+        }
+        if (outputSignals.contains(signal)){
+            outputSignals.remove(signal);
+        }        
+    }
 
     protected void stopProcessing(){
 //        JPac.getInstance().unregisterCyclicTask(this);        
