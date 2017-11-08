@@ -32,8 +32,6 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.URI;
 import org.jpac.Address;
-import org.jpac.AsynchronousTask;
-import org.jpac.ProcessException;
 import static org.jpac.vioss.IOHandler.Log;
 import org.jpac.vioss.IllegalUriException;
 import org.jpac.vioss.IoSignal;
@@ -86,7 +84,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
 
     @Override
     public void stop(){
-        Log.info("shutting down ..." + this);
+        Log.info("shutting down " + this + " ...");
         //TODO close file for RevPi's process image
         if (piControl != null){
             try{piControl.close();}catch(IOException exc){/*ignore*/};
@@ -142,30 +140,5 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     
     public ProcessImage getProcessImage(){
         return this.processImage;
-    }
-        
-    class InputOutputProcessImageRunner extends AsynchronousTask{
-        public  RunnerState state;        
-        
-        public InputOutputProcessImageRunner(String instanceIdentifier){
-            super(instanceIdentifier);
-            this.state = RunnerState.CONNECTING;
-        }
-        
-        @Override
-        public void doIt() throws ProcessException {            
-            try{
-                //TODO maintain transfer of inputData and outputData to process image of the revPi 
-//                piControl.read(inputData.getBytes()  , inputProcessImageOffset , inputProcessImageSize);
-//                piControl.write(outputData.getBytes(), outputProcessImageOffset, outputProcessImageSize);
-            }
-            catch(Error | Exception exc){
-                throw new ProcessException(exc);                
-            }
-        }
-        
-        public RunnerState getState(){
-            return this.state;
-        }        
-    }
+    }        
 }

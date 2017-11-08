@@ -34,6 +34,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
+import org.jpac.plc.AddressException;
 import org.jpac.plc.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,7 +84,11 @@ public class ProcessImage {
         devices.forEach((dev) -> dev.updateProcessImage());
     }
     
-    public ProcessImageItem getItem(String identifier){
+    public Device getDevice(String identifier){
+        return devices.stream().filter((dev)-> dev.getIdentifier().equals(identifier)).findFirst().get();
+    }
+    
+    public ProcessImageItem getItem(String identifier) throws AddressException{
         ProcessImageItem searchedProcessImageItem = null;
         Iterator<Device> devs  = devices.iterator();
         while(devs.hasNext() && searchedProcessImageItem == null){

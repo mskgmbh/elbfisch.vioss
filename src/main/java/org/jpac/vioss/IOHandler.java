@@ -35,7 +35,9 @@ import org.jpac.Address;
 import org.jpac.CyclicTask;
 import org.jpac.JPac;
 import org.jpac.NumberOutOfRangeException;
+import org.jpac.Signal;
 import org.jpac.SignalAccessException;
+import org.jpac.SignalRegistry;
 import org.jpac.WrongUseException;
 import org.jpac.plc.AddressException;
 import org.jpac.plc.IoDirection;
@@ -128,7 +130,8 @@ abstract public class IOHandler implements CyclicTask{
         }
         if (outputSignals.contains(signal)){
             outputSignals.remove(signal);
-        }        
+        }
+        SignalRegistry.getInstance().remove((Signal) signal);
     }
 
     protected void stopProcessing(){

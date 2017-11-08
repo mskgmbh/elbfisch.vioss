@@ -84,7 +84,7 @@ public class Device {
         numberOfBytes = 0;
         this.inputs   = new ArrayList<>();
         Iterator<JsonNode> inputNodes = deviceNode.at(INPUT).elements();
-        this.inputImage = new Data(DUMMY);
+        this.inputImage = new Data(DUMMY, Data.Endianness.LITTLEENDIAN);
         while (inputNodes.hasNext()){
             pii = new ProcessImageItem(this, imageOffset, inputNodes.next(), IoDirection.INPUT, this.inputImage);
             this.inputs.add(pii);
@@ -100,7 +100,7 @@ public class Device {
         numberOfBytes = 0;
         this.outputs  = new ArrayList<>();
         Iterator<JsonNode> outputNodes = deviceNode.at(OUTPUT).elements();
-        this.outputImage = new Data(DUMMY);
+        this.outputImage = new Data(DUMMY, Data.Endianness.LITTLEENDIAN);
         while (outputNodes.hasNext()){
             pii = new ProcessImageItem(this, imageOffset, outputNodes.next(), IoDirection.OUTPUT, this.outputImage);
             this.outputs.add(pii);
@@ -116,7 +116,7 @@ public class Device {
         numberOfBytes    = 0;
         this.memoryItems = new ArrayList<>();
         Iterator<JsonNode> memoryNodes = deviceNode.at(MEMORY).elements();
-        this.memoryImage = new Data(DUMMY);
+        this.memoryImage = new Data(DUMMY, Data.Endianness.LITTLEENDIAN);
         while (memoryNodes.hasNext()){
             pii = new ProcessImageItem(this, imageOffset, memoryNodes.next(), IoDirection.INPUT, this.memoryImage);
             this.memoryItems.add(pii);
@@ -133,7 +133,7 @@ public class Device {
         numberOfBytes    = 0;
         this.extendItems = new ArrayList<>();
         Iterator<JsonNode> extendNodes = deviceNode.at(EXTEND).elements();
-        this.extendImage = new Data(DUMMY);
+        this.extendImage = new Data(DUMMY, Data.Endianness.LITTLEENDIAN);
         while (extendNodes.hasNext()){
             pii = new ProcessImageItem(this, imageOffset, extendNodes.next(), IoDirection.INPUT, this.extendImage);
             this.extendItems.add(pii);
@@ -200,10 +200,9 @@ public class Device {
                 byteOffset += inputImage.getBytes().length;
                 System.arraycopy(ProcessImage.simulatedProcessImage.getBytes(), byteOffset, outputImage.getBytes(), 0, outputImage.getBytes().length);
                 byteOffset += outputImage.getBytes().length;
-//                System.arraycopy(ProcessImage.simulatedProcessImage.getBytes(), byteOffset, memoryImage.getBytes(), 0, memoryImage.getBytes().length);
-//                byteOffset += memoryImage.getBytes().length;
-//                System.arraycopy(ProcessImage.simulatedProcessImage.getBytes(), byteOffset, extendImage.getBytes(), 0, extendImage.getBytes().length);
-                //if (identifier.equals("device_RevPiAIO_20170301_1_0_001")) Log.info(memoryImage.toString());
+                System.arraycopy(ProcessImage.simulatedProcessImage.getBytes(), byteOffset, memoryImage.getBytes(), 0, memoryImage.getBytes().length);
+                byteOffset += memoryImage.getBytes().length;
+                System.arraycopy(ProcessImage.simulatedProcessImage.getBytes(), byteOffset, extendImage.getBytes(), 0, extendImage.getBytes().length);
             }
         }
         catch(Exception exc){

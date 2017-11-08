@@ -46,6 +46,10 @@ public class IoLogical extends org.jpac.vioss.IoLogical {
     public IoLogical(AbstractModule containingModule, String identifier, URI uri, IoDirection ioDirection) throws SignalAlreadyExistsException, InconsistencyException, WrongUseException{
         super(containingModule, identifier, uri, ioDirection);
         setProcessImageItem(seizeProcessImageItem(uri));
+        if (processImageItem == null){
+            getIOHandler().discardSignal(this);//remove registration of this signal already done by super(..)
+            throw new InconsistencyException("process image item '" + uri.getPath() + "' for signal " +this.getQualifiedIdentifier() + " not found");
+        }        
         if (processImageItem.getIoDirection() != IoDirection.INOUT && ioDirection != processImageItem.getIoDirection()){
             getIOHandler().discardSignal(this);//remove registration of this signal already done by super(..)
             throw new InconsistencyException("inconsistant io direction for signal " + this.getQualifiedIdentifier() + ". Must be " + processImageItem.getIoDirection());
@@ -95,7 +99,11 @@ public class IoLogical extends org.jpac.vioss.IoLogical {
     public void checkOut() throws SignalAccessException, AddressException{
         try{
             outCheck = true;
-            processImageItem.getData().setBIT(getAddress().getByteIndex(),getAddress().getBitIndex(), isValid() ? is(true) : false);
+            //do not touch process image, if IoDirection is INOUT and this signal is invalid (avoid overwrite of configuration done by PiCtory)
+            //In this case this signal will get valid during next fetch of the process image (checkIn())
+            if (isValid() || getIoDirection() == IoDirection.OUTPUT){
+                processImageItem.getData().setBIT(getAddress().getByteIndex(),getAddress().getBitIndex(), isValid() ? is(true) : false);
+            }
         }
         finally{
             outCheck = false;

@@ -47,12 +47,15 @@ public class IoSignedInteger extends org.jpac.vioss.IoSignedInteger {
     public IoSignedInteger(AbstractModule containingModule, String identifier, URI uri, IoDirection ioDirection) throws SignalAlreadyExistsException, InconsistencyException, WrongUseException{
         super(containingModule, identifier, uri, ioDirection);
         setProcessImageItem(seizeProcessImageItem(uri));
+        if (processImageItem == null){
+            getIoHandler().discardSignal(this);//remove registration of this signal already done by super(..)
+            throw new InconsistencyException("process image item '" + uri.getPath() + "' for signal " +this.getQualifiedIdentifier() + " not found");
+        }
         if (processImageItem.getIoDirection() != IoDirection.INOUT && ioDirection != processImageItem.getIoDirection()){
             getIoHandler().discardSignal(this);//remove registration of this signal already done by super(..)
             throw new InconsistencyException("inconsistant io direction for signal " + this.getQualifiedIdentifier() + ". Must be " + processImageItem.getIoDirection());
         }
         if (processImageItem.getAddress().getBitIndex() != Address.NA){
-            getIoHandler().discardSignal(this);//remove registration of this signal already done by super(..)
             throw new InconsistencyException("signal " + this.getQualifiedIdentifier() + " must not be assigned to bit input/output");            
         }        
         setAddress(processImageItem.getAddress());
@@ -109,16 +112,20 @@ public class IoSignedInteger extends org.jpac.vioss.IoSignedInteger {
     public void checkOut() throws SignalAccessException, AddressException{
         try{
             outCheck = true;
-            switch(getAddress().getSize()){
-                case 1:
-                    processImageItem.getData().setBYTE(getAddress().getByteIndex(), isValid() ? get() : 0);
-                    break;
-                case 2:
-                    processImageItem.getData().setINT(getAddress().getByteIndex(), isValid() ? get() : 0);
-                    break;
-                case 4:
-                    processImageItem.getData().setDINT(getAddress().getByteIndex(), isValid() ? get() : 0);
-                    break;
+            //do not touch process image, if IoDirection is INOUT and this signal is invalid (avoid overwrite of configuration done by PiCtory)            
+            //In this case this signal will get valid during next fetch of the process image (checkIn())
+            if (isValid() || getIoDirection() == IoDirection.OUTPUT){
+                switch(getAddress().getSize()){
+                    case 1:
+                        processImageItem.getData().setBYTE(getAddress().getByteIndex(), isValid() ? get() : 0);
+                        break;
+                    case 2:
+                        processImageItem.getData().setINT(getAddress().getByteIndex(), isValid() ? get() : 0);
+                        break;
+                    case 4:
+                        processImageItem.getData().setDINT(getAddress().getByteIndex(), isValid() ? get() : 0);
+                        break;
+                }
             }
         } catch(ValueOutOfRangeException exc){
             throw new SignalAccessException(getQualifiedIdentifier() + ": value out of range: " +  get());
