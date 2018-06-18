@@ -29,7 +29,6 @@ import java.net.URI;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
 import org.jpac.AbstractModule;
-import org.jpac.plc.Address;
 import org.jpac.InconsistencyException;
 import org.jpac.SignalAlreadyExistsException;
 import org.jpac.WrongUseException;
@@ -64,7 +63,7 @@ abstract public class IoDecimal extends org.jpac.plc.IoDecimal implements IoSign
         return this.ioSignalImpl.uri;
     }
     
-    public IOHandler getIoHandler(){
+    public IOHandler getIOHandler(){
         return this.ioSignalImpl.ioHandler;
     }
 }

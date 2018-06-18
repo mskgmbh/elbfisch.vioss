@@ -64,7 +64,7 @@ abstract public class IoCharString extends org.jpac.plc.IoCharString implements 
         return this.ioSignalImpl.uri;
     }
     
-    public IOHandler getIoHandler(){
+    public IOHandler getIOHandler(){
         return this.ioSignalImpl.ioHandler;
     }
 }

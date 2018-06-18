@@ -63,7 +63,7 @@ abstract public class IoSignedInteger extends org.jpac.plc.IoSignedInteger imple
         return this.ioSignalImpl.uri;
     }
     
-    public IOHandler getIoHandler(){
+    public IOHandler getIOHandler(){
         return this.ioSignalImpl.ioHandler;
     }
 }

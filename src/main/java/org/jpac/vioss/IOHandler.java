@@ -26,6 +26,7 @@
 package org.jpac.vioss;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -57,7 +58,7 @@ abstract public class IOHandler implements CyclicTask{
     
     private String          toString;
     
-    public IOHandler(URI uri)  throws IllegalUriException{
+    public IOHandler(URI uri)  throws IllegalUriException {
         this.inputSignals       = Collections.synchronizedList(new ArrayList<IoSignal>());
         this.outputSignals      = Collections.synchronizedList(new ArrayList<IoSignal>());
         this.uri                = uri;
@@ -156,9 +157,7 @@ abstract public class IOHandler implements CyclicTask{
     @Override
     public String toString(){
         if (toString == null){
-            String host = getUri().getHost() == null ? ":" : "://" + getUri().getHost();
-            String port = getUri().getPort() == -1 ? "" : ":" + Integer.toString(getUri().getPort());
-            toString = getClass().getCanonicalName() + "(" +getUri().getScheme() + host + port + ")";
+            toString = getClass().getCanonicalName() + "(" + getTargetInstance()     + ")";
         }
         return toString;
     }
@@ -182,6 +181,10 @@ abstract public class IOHandler implements CyclicTask{
      */
     public boolean isProcessingAborted() {
         return processingAborted;
+    }
+    
+    public String getTargetInstance(){
+        return uri.toString().replace(uri.getPath(),"");
     }
 
     /**

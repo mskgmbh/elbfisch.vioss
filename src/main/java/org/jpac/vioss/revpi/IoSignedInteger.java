@@ -48,11 +48,11 @@ public class IoSignedInteger extends org.jpac.vioss.IoSignedInteger {
         super(containingModule, identifier, uri, ioDirection);
         setProcessImageItem(seizeProcessImageItem(uri));
         if (processImageItem == null){
-            getIoHandler().discardSignal(this);//remove registration of this signal already done by super(..)
+            getIOHandler().discardSignal(this);//remove registration of this signal already done by super(..)
             throw new InconsistencyException("process image item '" + uri.getPath() + "' for signal " +this.getQualifiedIdentifier() + " not found");
         }
         if (processImageItem.getIoDirection() != IoDirection.INOUT && ioDirection != processImageItem.getIoDirection()){
-            getIoHandler().discardSignal(this);//remove registration of this signal already done by super(..)
+            getIOHandler().discardSignal(this);//remove registration of this signal already done by super(..)
             throw new InconsistencyException("inconsistant io direction for signal " + this.getQualifiedIdentifier() + ". Must be " + processImageItem.getIoDirection());
         }
         if (processImageItem.getAddress().getBitIndex() != Address.NA){
@@ -67,7 +67,7 @@ public class IoSignedInteger extends org.jpac.vioss.IoSignedInteger {
         try{
             String token = tokenizer.nextToken();
             //uri : .../<identifier defined in JSON file of PiCtory>
-            processImageItem = ((org.jpac.vioss.revpi.IOHandler)getIoHandler()).getProcessImage().getItem(token);
+            processImageItem = ((org.jpac.vioss.revpi.IOHandler)getIOHandler()).getProcessImage().getItem(token);
         }
         catch(Exception exc){
             throw new InconsistencyException("illegal address specification in '" + uri.getPath() + "' : " + exc);
