@@ -30,6 +30,7 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
+import io.netty.channel.FixedRecvByteBufAllocator;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
@@ -37,8 +38,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class Connection{
-    static final Logger Log = LoggerFactory.getLogger("jpac.vioss.ef");
-        
+    static final int         DEFAULTRECEIVEBUFFERSIZE = 4096;    
+    static final Logger      Log = LoggerFactory.getLogger("jpac.vioss.ef");
     protected boolean        connected;
     protected boolean        justConnected;
 
@@ -66,6 +67,7 @@ public class Connection{
             @Override
             public void initChannel(SocketChannel ch) throws Exception {
                 ch.pipeline().addLast(clientHandler);
+                ch.config().setRecvByteBufAllocator(new FixedRecvByteBufAllocator(DEFAULTRECEIVEBUFFERSIZE));//should be a property
             }
         });
         // Start the client.

@@ -5,6 +5,17 @@
     <artifactId>elbfisch.vioss</artifactId>
     <version>2.1</version>
     <packaging>jar</packaging>
+    <repositories>
+        <repository>
+            <id>oss-snapshots-repo</id>
+            <name>Sonatype OSS Maven Repository</name>
+            <url>https://oss.sonatype.org/content/groups/public</url>
+            <snapshots>
+                <enabled>true</enabled>
+                <updatePolicy>always</updatePolicy>
+            </snapshots>
+        </repository>
+    </repositories>    
     <dependencies>
         <dependency>
             <groupId>org.eclipse.milo</groupId>
