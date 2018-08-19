@@ -62,13 +62,20 @@ public class IoSignedInteger extends org.jpac.vioss.IoSignedInteger implements I
      * @throws InconsistencyException
      * @throws WrongUseException 
      */    
-    public IoSignedInteger(AbstractModule containingModule, String identifier, URI uri, IoDirection ioDirection, double samplingInterval, ExtensionObject extensionObject, int queueSize, boolean discardOldest) throws SignalAlreadyExistsException, InconsistencyException, WrongUseException{
+    public IoSignedInteger(AbstractModule containingModule, String identifier, URI uri, IoDirection ioDirection, boolean useQuotes, double samplingInterval, ExtensionObject extensionObject, int queueSize, boolean discardOldest) throws SignalAlreadyExistsException, InconsistencyException, WrongUseException{
         super(containingModule, identifier, uri, ioDirection);
-        this.ioSignalImpl = new IoSignalImpl(this, uri, samplingInterval, extensionObject, queueSize, discardOldest);
+        this.ioSignalImpl = new IoSignalImpl(this, uri, useQuotes, samplingInterval, extensionObject, queueSize, discardOldest);
         this.ioSignalImpl.setCheckInValueSetter(v -> {
                     try{
+                    	int value = 0;
                         inCheck = true;
-                        try{set((int)v.getValue());}catch(NumberOutOfRangeException exc){/*ignored*/};
+                        if (v.getValue() instanceof Short) {
+                        	short si = (short)v.getValue();
+                        	value    = (int)si;
+                        } else {
+                        	value    = (int)v.getValue();
+                        }
+                        try{set((int)value);}catch(NumberOutOfRangeException exc){/*ignored*/};
                     }
                     catch(SignalAccessException exc){/*cannot happen*/}
                     finally{
@@ -78,8 +85,8 @@ public class IoSignedInteger extends org.jpac.vioss.IoSignedInteger implements I
         this.ioSignalImpl.setCheckOutValueGetter(() -> {return isValid() ? getValue() : null;});
     }
         
-    public IoSignedInteger(AbstractModule containingModule, String identifier, URI uri, IoDirection ioDirection) throws SignalAlreadyExistsException, InconsistencyException, WrongUseException{
-        this(containingModule, identifier, uri, ioDirection, 100.0, null, 10, false);
+    public IoSignedInteger(AbstractModule containingModule, String identifier, URI uri, IoDirection ioDirection, boolean useQuotes) throws SignalAlreadyExistsException, InconsistencyException, WrongUseException{
+        this(containingModule, identifier, uri, ioDirection, useQuotes, 100.0, null, 10, false);
     }  
 
     @Override

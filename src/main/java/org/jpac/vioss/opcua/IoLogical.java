@@ -61,9 +61,9 @@ public class IoLogical extends org.jpac.vioss.IoLogical implements IoSignal{
      * @throws InconsistencyException
      * @throws WrongUseException 
      */    
-    public IoLogical(AbstractModule containingModule, String identifier, URI uri, IoDirection ioDirection, double samplingInterval, ExtensionObject extensionObject, int queueSize, boolean discardOldest) throws SignalAlreadyExistsException, InconsistencyException, WrongUseException{
+    public IoLogical(AbstractModule containingModule, String identifier, URI uri, IoDirection ioDirection, boolean useQuotes, double samplingInterval, ExtensionObject extensionObject, int queueSize, boolean discardOldest) throws SignalAlreadyExistsException, InconsistencyException, WrongUseException{
         super(containingModule, identifier, uri, ioDirection);
-        this.ioSignalImpl = new IoSignalImpl(this, uri, samplingInterval, extensionObject, queueSize, discardOldest);
+        this.ioSignalImpl = new IoSignalImpl(this, uri, useQuotes, samplingInterval, extensionObject, queueSize, discardOldest);
         this.ioSignalImpl.setCheckInValueSetter(v -> {
                     try{
                         inCheck = true;
@@ -77,8 +77,8 @@ public class IoLogical extends org.jpac.vioss.IoLogical implements IoSignal{
         this.ioSignalImpl.setCheckOutValueGetter(() -> {return isValid() ? getValue() : null;});
     }
         
-    public IoLogical(AbstractModule containingModule, String identifier, URI uri, IoDirection ioDirection) throws SignalAlreadyExistsException, InconsistencyException, WrongUseException{
-        this(containingModule, identifier, uri, ioDirection, 100.0, null, 10, false);
+    public IoLogical(AbstractModule containingModule, String identifier, URI uri, IoDirection ioDirection, boolean useQuotes) throws SignalAlreadyExistsException, InconsistencyException, WrongUseException{
+        this(containingModule, identifier, uri, ioDirection, useQuotes, 100.0, null, 10, false);
     }  
 
     @Override

@@ -63,9 +63,9 @@ public class IoCharString extends org.jpac.vioss.IoCharString implements IoSigna
      * @throws WrongUseException 
      * @throws org.jpac.plc.StringLengthException 
      */    
-    public IoCharString(AbstractModule containingModule, String identifier, URI uri, IoDirection ioDirection, double samplingInterval, ExtensionObject extensionObject, int queueSize, boolean discardOldest) throws SignalAlreadyExistsException, InconsistencyException, WrongUseException, StringLengthException{
+    public IoCharString(AbstractModule containingModule, String identifier, URI uri, IoDirection ioDirection, boolean useQuotes, double samplingInterval, ExtensionObject extensionObject, int queueSize, boolean discardOldest) throws SignalAlreadyExistsException, InconsistencyException, WrongUseException, StringLengthException{
         super(containingModule, identifier, uri, ioDirection);
-        this.ioSignalImpl = new IoSignalImpl(this, uri, samplingInterval, extensionObject, queueSize, discardOldest);
+        this.ioSignalImpl = new IoSignalImpl(this, uri, useQuotes,  samplingInterval, extensionObject, queueSize, discardOldest);
         this.ioSignalImpl.setCheckInValueSetter(v -> {
                     try{
                         inCheck = true;
@@ -79,8 +79,8 @@ public class IoCharString extends org.jpac.vioss.IoCharString implements IoSigna
         this.ioSignalImpl.setCheckOutValueGetter(() -> {return isValid() ? getValue() : null;});
     }
         
-    public IoCharString(AbstractModule containingModule, String identifier, URI uri, IoDirection ioDirection) throws SignalAlreadyExistsException, InconsistencyException, WrongUseException, StringLengthException{
-        this(containingModule, identifier, uri, ioDirection, 100.0, null, 10, false);
+    public IoCharString(AbstractModule containingModule, String identifier, URI uri, IoDirection ioDirection, boolean useQuotes) throws SignalAlreadyExistsException, InconsistencyException, WrongUseException, StringLengthException{
+        this(containingModule, identifier, uri, ioDirection, useQuotes,  100.0, null, 10, false);
     }  
 
     @Override

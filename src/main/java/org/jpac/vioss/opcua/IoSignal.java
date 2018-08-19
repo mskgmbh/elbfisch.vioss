@@ -53,4 +53,8 @@ public interface IoSignal extends org.jpac.vioss.IoSignal{
     public boolean isRemotelyAvailable();
     public void setStatusCode(StatusCode statusCode);
     public StatusCode getStatusCode();
+    
+    default String encloseWithQuotes(String identifier) {	
+    	return "\"" + identifier.replace (".", "\".\"") + "\"";
+    }    
 }

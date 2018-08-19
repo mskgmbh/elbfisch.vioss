@@ -68,22 +68,22 @@ public class Handshake {
     
     protected final Event           valid;
 
-    public Handshake(Module containingModule, String identifier, URI uri) throws URISyntaxException {
-        this(containingModule, identifier, uri,  100.0, null, 10, false);
+    public Handshake(Module containingModule, String identifier, URI uri, boolean useQuotes) throws URISyntaxException {
+        this(containingModule, identifier, uri, useQuotes,  100.0, null, 10, false);
     }
 
-    public Handshake(Module containingModule, String identifier, URI uri,  double samplingRate, ExtensionObject extensionObject, int queueSize, boolean discardOldest) throws URISyntaxException {
+    public Handshake(Module containingModule, String identifier, URI uri,  boolean useQuotes, double samplingRate, ExtensionObject extensionObject, int queueSize, boolean discardOldest) throws URISyntaxException {
         this.identifier = identifier;
         this.uri        = uri;
         
         if (uri != null){
             //handshake is used to access signals on a remote opc server
-            this.request     = new IoLogical(containingModule, identifier + ".Request", new URI(uri + ".Request"), IoDirection.OUTPUT, samplingRate, extensionObject, queueSize, discardOldest);
-            this.ready       = new IoLogical(containingModule, identifier + ".Ready",   new URI(uri + ".Ready"), IoDirection.INPUT, samplingRate, extensionObject, queueSize, discardOldest);
-            this.ack         = new IoLogical(containingModule, identifier + ".Ack",     new URI(uri + ".Ack"), IoDirection.INPUT, samplingRate, extensionObject, queueSize, discardOldest);
-            this.active      = new IoLogical(containingModule, identifier + ".Active",  new URI(uri + ".Active"), IoDirection.INPUT, samplingRate, extensionObject, queueSize, discardOldest);
-            this.command     = new IoSignedInteger(containingModule, identifier + ".Command", new URI(uri + ".Command"), IoDirection.OUTPUT, samplingRate, extensionObject, queueSize, discardOldest);
-            this.result      = new IoSignedInteger(containingModule, identifier + ".Result", new URI(uri + ".Result"), IoDirection.INPUT, samplingRate, extensionObject, queueSize, discardOldest);
+            this.request     = new IoLogical(containingModule, identifier + ".Request", new URI(uri + ".Request"), IoDirection.OUTPUT, useQuotes, samplingRate, extensionObject, queueSize, discardOldest);
+            this.ready       = new IoLogical(containingModule, identifier + ".Ready",   new URI(uri + ".Ready"), IoDirection.INPUT, useQuotes, samplingRate, extensionObject, queueSize, discardOldest);
+            this.ack         = new IoLogical(containingModule, identifier + ".Ack",     new URI(uri + ".Ack"), IoDirection.INPUT, useQuotes, samplingRate, extensionObject, queueSize, discardOldest);
+            this.active      = new IoLogical(containingModule, identifier + ".Active",  new URI(uri + ".Active"), IoDirection.INPUT, useQuotes, samplingRate, extensionObject, queueSize, discardOldest);
+            this.command     = new IoSignedInteger(containingModule, identifier + ".Command", new URI(uri + ".Command"), IoDirection.OUTPUT, useQuotes, samplingRate, extensionObject, queueSize, discardOldest);
+            this.result      = new IoSignedInteger(containingModule, identifier + ".Result", new URI(uri + ".Result"), IoDirection.INPUT, useQuotes, samplingRate, extensionObject, queueSize, discardOldest);
             //initialize output signals
             this.request.setDeferred(false);
             this.command.setDeferred(DONTCAREINTEGER);

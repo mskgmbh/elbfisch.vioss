@@ -76,13 +76,15 @@ public class IoSignalImpl extends org.jpac.vioss.IoSignalImpl{
     
     private Consumer<Variant> checkInValueSetter;
     private Supplier<Value>   checkOutValueGetter;
+    private boolean			  useQuotes;
 
-    public IoSignalImpl(IoSignal containingSignal, URI uri, double samplingInterval, ExtensionObject extensionObject, int queueSize, boolean discardOldest) throws InconsistencyException, WrongUseException {
+    public IoSignalImpl(IoSignal containingSignal, URI uri, boolean useQuotes, double samplingInterval, ExtensionObject extensionObject, int queueSize, boolean discardOldest) throws InconsistencyException, WrongUseException {
         super(containingSignal, uri);
         this.samplingInterval = samplingInterval;
         this.extensionObject  = extensionObject;
         this.queueSize        = queueSize;
         this.discardOldest    = discardOldest;
+        this.useQuotes        = useQuotes;
         StringTokenizer path  = new StringTokenizer(uri.getPath().substring(1),"/");
         
         try{this.nameSpaceIndex  = Integer.parseInt(path.nextToken());}catch(NumberFormatException exc){/*nothing to do*/};        
@@ -96,8 +98,8 @@ public class IoSignalImpl extends org.jpac.vioss.IoSignalImpl{
         if (!path.hasMoreTokens()){
             throw new InconsistencyException(("missing signal identifier '" + uri + "'"));            
         }
-        this.plcIdentifier             = path.nextToken();
-        this.nodeId                    = new NodeId(nameSpaceIndex, plcIdentifier);
+        this.plcIdentifier             = useQuotes ? encloseWithQuotes(path.nextToken()) : path.nextToken();
+        this.nodeId                    = new NodeId(nameSpaceIndex, plcIdentifier);        	
         this.checkInFaultLogged        = false;
         this.checkOutFaultLogged       = false;
         this.monitoredItemValueUpdated = false;
@@ -170,5 +172,9 @@ public class IoSignalImpl extends org.jpac.vioss.IoSignalImpl{
             this.monitoredItemValue        = dataValue;
             this.monitoredItemValueUpdated = true;
         }
+    }
+    
+    protected String encloseWithQuotes(String identifier) {	
+    	return "\"" + identifier.replace (".", "\".\"") + "\"";
     }
 }
