@@ -29,15 +29,22 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
-import org.jpac.Address;
+import java.util.HashMap;
+import org.jpac.Signal;
+import org.jpac.LogicalValue;
+import org.jpac.SignedIntegerValue;
+import org.jpac.vioss.IoSignal;
 import org.jpac.AsynchronousTask;
 import org.jpac.InconsistencyException;
 import org.jpac.NumberOutOfRangeException;
 import org.jpac.ProcessException;
 import org.jpac.SignalAccessException;
+import org.jpac.SignalInvalidException;
 import org.jpac.WrongUseException;
 import org.jpac.plc.AddressException;
-import static org.jpac.vioss.IOHandler.Log;
+import org.jpac.plc.Data;
+import org.jpac.plc.ValueOutOfRangeException;
+
 import org.jpac.vioss.IllegalUriException;
 
 /**
@@ -46,7 +53,6 @@ import org.jpac.vioss.IllegalUriException;
  */
 public class IOHandler extends org.jpac.vioss.IOHandler{
     private final static String  HANDLEDSCHEME                = "ADS";
-    private final static int     TRANSMISSIONTIMEOUT          = 1000;//ms
     private final static int     CONNECTIONRETRYTIME          = 1000;//ms  
     private final static int     NUMBEROFREADWRITESPERREQUEST = 100;
     private final static int     NUMBEROFREADSPERREQUEST      = 200;
@@ -61,13 +67,13 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     private boolean                   connecting;
     private ReadWriteMultipleInChunks retrieveAdsVariableHandlesByName;
     private ReadMultipleInChunks      readVariablesByHandle;
-    //private AdsReadMultiple           readVariablesByHandle;
     private WriteMultipleInChunks     writeVariablesByHandle;
-    //private AdsWriteMultiple          writeVariablesByHandle;
     private WriteMultipleInChunks     releaseHandles;
-    //private AdsWriteMultiple          releaseHandles;
     private AdsReadState              adsReadState;
-    private boolean                   adsStateNotRunLogged;
+    
+    protected HashMap<IoSignal,AdsReadVariableByHandle>  listOfAdsReadVariableByHandle;
+    protected HashMap<IoSignal,AdsWriteVariableByHandle> listOfAdsWriteVariableByHandle;
+    protected HashMap<Integer,AdsGetSymbolHandleByName>  listOfAdsGetSymbolHandleByName;
         
     public IOHandler(URI uri) throws IllegalUriException {
         super(uri);
@@ -227,24 +233,26 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
             if (!readVariablesByHandle.getAmsPackets().isEmpty()){
                 readVariablesByHandle.transact(connection);
                 //propagate input signals
-                for(org.jpac.plc.IoSignal ios: getInputSignals()){
-                    ((org.jpac.vioss.IoSignal)ios).checkIn();
-                    if (((org.jpac.vioss.IoSignal)ios).getErrorCode() != AdsErrorCode.NoError){
+                for(Signal ios: getInputSignals()){
+                	transferSignalFromProcessImage((IoSignal)ios);
+                	((IoSignal)ios).checkIn();
+                	if (((IoSignal)ios).getErrorCode() != AdsErrorCode.NoError){
                         allSignalsProperlyTransferred = false;
                     }
                 }
             }
             //put out output signals
             if (!writeVariablesByHandle.getAmsPackets().isEmpty()){
-                for(org.jpac.plc.IoSignal ios: getOutputSignals()){
-                    if (ios.isToBePutOut()){
-                        ios.resetToBePutOut();
-                        ios.checkOut();
+                for(Signal ios: getOutputSignals()){
+                    if (((IoSignal)ios).isToBePutOut()){
+                    	((IoSignal)ios).resetToBePutOut();
+                    	((IoSignal)ios).checkOut();
+                    	transferSignalToProcessImage((IoSignal)ios);
                     }
                 }
                 writeVariablesByHandle.transact(connection);
-                for(org.jpac.plc.IoSignal ios: getOutputSignals()){
-                    AdsErrorCode adsErrorCode = ((org.jpac.vioss.ads.IoSignal)ios).getAdsWriteVariableByHandle().getAdsResponse().getErrorCode();
+                for(Signal ios: getOutputSignals()){
+                    AdsErrorCode adsErrorCode = getAdsWriteVariableByHandle((IoSignal)ios).getAdsResponse().getErrorCode();
                     if (adsErrorCode != AdsErrorCode.NoError){
                         allSignalsProperlyTransferred = false;
                     }
@@ -278,58 +286,189 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     protected void prepareSignalsForTransfer(){
         //collect signals to be transceived ...
         writeVariablesByHandle           = new WriteMultipleInChunks(NUMBEROFWRITESPERREQUEST);
-        //writeVariablesByHandle           = new AdsWriteMultiple();
         readVariablesByHandle            = new ReadMultipleInChunks(NUMBEROFREADSPERREQUEST);
-        //readVariablesByHandle            = new AdsReadMultiple();
         retrieveAdsVariableHandlesByName = new ReadWriteMultipleInChunks(NUMBEROFREADWRITESPERREQUEST);
         releaseHandles                   = new WriteMultipleInChunks(NUMBEROFWRITESPERREQUEST);
-        //releaseHandles                   = new AdsWriteMultiple();
-        for (org.jpac.plc.IoSignal ios: getInputSignals()){
-            retrieveAdsVariableHandlesByName.addAdsReadWrite(((IoSignal)ios).getAdsGetSymbolHandleByName());
-            releaseHandles.addAmsPacket(((IoSignal)ios).getAdsReleaseHandle());
-            readVariablesByHandle.addAmsPacket(((IoSignal)ios).getAdsReadVariableByHandle());
+        for (Signal ios: getInputSignals()){
+            retrieveAdsVariableHandlesByName.addAdsReadWrite(getAdsGetSymbolHandleByName((IoSignal)ios));
+            readVariablesByHandle.addAmsPacket(getAdsReadVariableByHandle((IoSignal)ios));
+            releaseHandles.addAmsPacket(getAdsReleaseHandle((IoSignal)ios));
         }
-        for (org.jpac.plc.IoSignal ios: getOutputSignals()){
-            if (!retrieveAdsVariableHandlesByName.getAdsReadWrites().contains(ios)){//avoid in/out signals to be collected twice
-                retrieveAdsVariableHandlesByName.addAdsReadWrite(((IoSignal)ios).getAdsGetSymbolHandleByName());
-                releaseHandles.addAmsPacket(((IoSignal)ios).getAdsReleaseHandle());
+        for (Signal ios: getOutputSignals()){
+            if (!getInputSignals().contains(ios)){//avoid in/out signals to be collected twice
+                retrieveAdsVariableHandlesByName.addAdsReadWrite(getAdsGetSymbolHandleByName((IoSignal)ios));
+                releaseHandles.addAmsPacket(getAdsReleaseHandle((IoSignal)ios));
             }
-            writeVariablesByHandle.addAmsPacket(((IoSignal)ios).getAdsWriteVariableByHandle());
+            writeVariablesByHandle.addAmsPacket(getAdsWriteVariableByHandle((IoSignal)ios));
         }        
     }
     
     protected void assignHandlesToSignals(){
-        for (org.jpac.vioss.IoSignal ios: getInputSignals()){
-            ((IoSignal)ios).getAdsReadVariableByHandle().setHandle(((IoSignal)ios).getAdsGetSymbolHandleByName().getHandle());
+        for (Signal ios: getInputSignals()){
+            getAdsReadVariableByHandle((IoSignal)ios).setHandle(getAdsGetSymbolHandleByName((IoSignal)ios).getHandle());
         }
-        for (org.jpac.vioss.IoSignal ios: getOutputSignals()){
-            ((IoSignal)ios).getAdsWriteVariableByHandle().setHandle(((IoSignal)ios).getAdsGetSymbolHandleByName().getHandle());
+        for (Signal ios: getOutputSignals()){
+            getAdsWriteVariableByHandle((IoSignal)ios).setHandle(getAdsGetSymbolHandleByName((IoSignal)ios).getHandle());
         }
     }
         
     protected void logIoSignalsWithMissingHandle(){
-        for (org.jpac.vioss.IoSignal ios: getInputSignals()){
-            AdsErrorCode adsErrorCode = ((IoSignal)ios).getAdsGetSymbolHandleByName().getAdsResponse().getErrorCode();
+        for (Signal ios: getInputSignals()){
+            AdsErrorCode adsErrorCode = getAdsGetSymbolHandleByName((IoSignal)ios).getAdsResponse().getErrorCode();
             if (adsErrorCode != AdsErrorCode.NoError){
-                Log.error("failed to retrieve handle for " + ios.getUri() + " ads error code: " + adsErrorCode);
+                Log.error("failed to retrieve handle for " + ((IoSignal)ios).getUri() + " ads error code: " + adsErrorCode);
             }
         }
-        for (org.jpac.vioss.IoSignal ios: getOutputSignals()){
-            AdsErrorCode adsErrorCode = ((IoSignal)ios).getAdsGetSymbolHandleByName().getAdsResponse().getErrorCode();
+        for (Signal ios: getOutputSignals()){
+            AdsErrorCode adsErrorCode = getAdsGetSymbolHandleByName((IoSignal)ios).getAdsResponse().getErrorCode();
             if (adsErrorCode != AdsErrorCode.NoError){
-                Log.error("failed to retrieve handle for " + ios.getUri() + " ads error code: " + adsErrorCode);
+                Log.error("failed to retrieve handle for " + ((IoSignal)ios).getUri() + " ads error code: " + adsErrorCode);
             }
         }
     }   
     
+    protected AdsGetSymbolHandleByName getAdsGetSymbolHandleByName(IoSignal ioSignal) {
+    	AdsGetSymbolHandleByName  gshbn   = null;
+    	int                       handle = ((RemoteSignalInfo)ioSignal.getRemoteSignalInfo()).getHandle();
+    	if (listOfAdsGetSymbolHandleByName.containsKey(handle)) {
+    		gshbn = listOfAdsGetSymbolHandleByName.get(handle);
+    	} else {
+    		gshbn = new AdsGetSymbolHandleByName(ioSignal.getPath());
+    		listOfAdsGetSymbolHandleByName.put(handle, gshbn);
+    	}
+    	return gshbn;
+    }
+    
+    protected AdsReadVariableByHandle  getAdsReadVariableByHandle(IoSignal ioSignal) {
+    	AdsReadVariableByHandle rvbh   = null;
+    	if (listOfAdsReadVariableByHandle.containsKey(ioSignal)) {
+    		rvbh = listOfAdsReadVariableByHandle.get(ioSignal);
+    	} else {
+    		rvbh = new AdsReadVariableByHandle(((RemoteSignalInfo)ioSignal.getRemoteSignalInfo()).getHandle(), getSizeFromSignalType(ioSignal));
+    		listOfAdsReadVariableByHandle.put(ioSignal, rvbh);
+    	}
+    	return rvbh;
+    }
+    
+    protected AdsWriteVariableByHandle getAdsWriteVariableByHandle(IoSignal ioSignal) {
+    	AdsWriteVariableByHandle wvbh   = null;
+    	if (listOfAdsWriteVariableByHandle.containsKey(ioSignal)) {
+    		wvbh = listOfAdsWriteVariableByHandle.get(ioSignal);
+    	} else {
+    		int size = getSizeFromSignalType(ioSignal);
+    		wvbh     = new AdsWriteVariableByHandle(new Long(((RemoteSignalInfo)ioSignal.getRemoteSignalInfo()).getHandle()), size, new Data(new byte[size], Data.Endianness.LITTLEENDIAN));
+    		listOfAdsWriteVariableByHandle.put(ioSignal, wvbh);
+    	}
+    	return wvbh;
+    }
+        
+    protected AdsReleaseHandle getAdsReleaseHandle(IoSignal ioSignal) {
+    	return new AdsReleaseHandle(new Long(((RemoteSignalInfo)ioSignal.getRemoteSignalInfo()).getHandle()));
+    }
+    
+    protected int getSizeFromSignalType(IoSignal ioSignal) {
+    	int size = 0;
+    	switch(((RemoteSignalInfo)ioSignal.getRemoteSignalInfo()).getType()) {
+	    	case Logical:
+	    		size = 1;
+	    		break;
+	    	case SignedInteger:
+	    		size = 4;
+	    		break;
+	    	case Decimal:
+	    		size = 8;
+	    		break;
+	    	case CharString:
+	    		throw new WrongUseException("CharString currently not implemented for ADS protocol");
+	    	default:
+	    		throw new WrongUseException("signal type " + ((RemoteSignalInfo)ioSignal.getRemoteSignalInfo()).getType() + " currently not implemented for ADS protocol");	    		
+    	}
+    	return size;
+    }
+    
+    protected void transferSignalFromProcessImage(IoSignal ioSignal) {
+    	AdsReadVariableByHandle rvbh         = getAdsReadVariableByHandle(ioSignal);
+        AdsErrorCode            adsErrorCode = rvbh.getAdsResponse().getErrorCode();
+        if (adsErrorCode == AdsErrorCode.NoError){
+        	try {
+	        	switch(((RemoteSignalInfo)ioSignal.getRemoteSignalInfo()).getType()) {
+			    	case Logical:
+			            boolean boolVal = rvbh.getAdsResponse().getData().getBYTE(0) != 0;
+			            ((LogicalValue)ioSignal.getRemoteSignalInfo().getValue()).set(boolVal);
+			    		break;
+			    	case SignedInteger:
+			    		int intVal = rvbh.getAdsResponse().getData().getDINT(0); 
+			            ((SignedIntegerValue)ioSignal.getRemoteSignalInfo().getValue()).set(intVal);
+			    		break;
+			    	case Decimal:
+			    		throw new WrongUseException("Decimal currently not implemented for ADS protocol");
+			    	case CharString:
+			    		throw new WrongUseException("CharString currently not implemented for ADS protocol");
+			    	default:
+			    		throw new WrongUseException("signal type " + ((RemoteSignalInfo)ioSignal.getRemoteSignalInfo()).getType() + " currently not implemented for ADS protocol");	   
+	        	}
+        	}
+        	catch(AddressException exc) {
+        		/*cannot happen*/
+        	}
+            if (ioSignal.getErrorCode() != null && ioSignal.getErrorCode() != AdsErrorCode.NoError) {
+            	//signal error state changed to NoError
+                Log.info(ioSignal + " restored");
+            }
+       } else {
+           if (ioSignal.getErrorCode() != null && ioSignal.getErrorCode() != adsErrorCode){
+        	   //signal error state changed to Error
+               Log.error(ioSignal + " got invalid due to ads Error " + adsErrorCode);
+           }
+           ((Signal)ioSignal).invalidate();
+       }
+       ioSignal.setErrorCode(adsErrorCode);
+    }
+    
+    protected void transferSignalToProcessImage(IoSignal ioSignal) {
+    	AdsWriteVariableByHandle wvbh         = getAdsWriteVariableByHandle(ioSignal);
+    	AdsErrorCode             adsErrorCode = wvbh.getAdsResponse().getErrorCode();
+    	if (ioSignal.getErrorCode() != null && ioSignal.getErrorCode() != adsErrorCode) {
+    		if (ioSignal.getErrorCode() != AdsErrorCode.NoError) {
+                Log.error((Signal)ioSignal + " cannot be propagated to plc due to ads Error " + adsErrorCode);    			
+    		} else {
+                Log.info((IoSignal)ioSignal + " restored");    			
+    		}
+    	}
+    	ioSignal.setErrorCode(adsErrorCode);
+    	try {
+    		RemoteSignalInfo rsi = (RemoteSignalInfo)ioSignal.getRemoteSignalInfo(); 
+        	switch(rsi.getType()) {
+		    	case Logical:
+		            wvbh.getData().setBYTE(0, rsi.getValue().isValid() && ((LogicalValue)rsi.getValue()).is(true) ? 1 : 0); 
+		    		break;
+		    	case SignedInteger:
+		            wvbh.getData().setDINT(0, rsi.getValue().isValid() ? ((SignedIntegerValue)rsi.getValue()).get() : 0); 
+		    		break;
+		    	case Decimal:
+		    		throw new WrongUseException("Decimal currently not implemented for ADS protocol");
+		    	case CharString:
+		    		throw new WrongUseException("CharString currently not implemented for ADS protocol");
+		    	default:
+		    		throw new WrongUseException("signal type " + ((RemoteSignalInfo)ioSignal.getRemoteSignalInfo()).getType() + " currently not implemented for ADS protocol");	   
+        	}
+    	}
+    	catch(AddressException | ValueOutOfRangeException exc) {
+    		/*cannot happen*/
+    	}
+        if (Log.isDebugEnabled() && ((Signal)ioSignal).isChanged()){
+            try{Log.debug(ioSignal + " transferred ");}catch(SignalInvalidException exc){/*cannot happen*/}
+        }
+    }
+
     protected void invalidateInputSignals() throws SignalAccessException{
-        for (org.jpac.vioss.IoSignal ios: getInputSignals()){
+        for (Signal ios: getInputSignals()){
             ios.invalidate();
         }        
     }
     
     @Override
-    public boolean handles(Address address, URI uri) {
+    public boolean handles(URI uri) {
         boolean isHandledByThisInstance = false;
         try{
             isHandledByThisInstance  = uri != null;
@@ -423,5 +562,4 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
             return connected;
         }
     }    
-    
 }

@@ -31,10 +31,21 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.URI;
+import java.util.StringTokenizer;
+
 import org.jpac.Address;
-import static org.jpac.vioss.IOHandler.Log;
+import org.jpac.InconsistencyException;
+import org.jpac.IoDirection;
+import org.jpac.Signal;
+import org.jpac.LogicalValue;
+import org.jpac.SignedIntegerValue;
+import org.jpac.plc.AddressException;
+import org.jpac.plc.ValueOutOfRangeException;
+
 import org.jpac.vioss.IllegalUriException;
+import org.jpac.vioss.IoLogical;
 import org.jpac.vioss.IoSignal;
+import org.jpac.vioss.IoSignedInteger;
 
 /**
  *
@@ -45,7 +56,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     public enum RunnerState {CONNECTING, TRANSMITTING, ERROR};
 
     final static String HANDLEDSCHEME       = "REVPI";
-    final static String DEVPICONTROL        = "/dev/piControl0";   //TODO pi control driver TEST: change to /dev/piControl0
+    final static String DEVPICONTROL        = "/dev/piControl0";
     
     protected RandomAccessFile piControl;
     protected ProcessImage     processImage;
@@ -61,7 +72,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     }
     
     @Override
-    public boolean handles(Address address, URI uri) {
+    public boolean handles(URI uri) {
         boolean isHandledByThisInstance = false;
         try{
             isHandledByThisInstance  = uri != null;
@@ -76,6 +87,8 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
         setProcessingStarted(true);
         Log.info("starting up " + this + (this.runningOnRevPi ? "" : " (simulated)"));
         try{
+        	getInputSignals().forEach((s) -> ((RemoteSignalInfo)((IoSignal)s).getRemoteSignalInfo()).setProcessImageItem(seizeProcessImageItem(s))); 
+        	getOutputSignals().forEach((s) -> ((RemoteSignalInfo)((IoSignal)s).getRemoteSignalInfo()).setProcessImageItem(seizeProcessImageItem(s))); 
         }
         catch(Exception exc){
             Log.error("Error:", exc);
@@ -89,6 +102,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
         if (piControl != null){
             try{piControl.close();}catch(IOException exc){/*ignore*/};
         }
+        setProcessingAborted(true);
     }
         
     @Override
@@ -96,46 +110,136 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
         try{
             if (!isProcessingAborted()){
                 //invoke data interchange
-                putSignalsToOutputProcessImage();
                 transceiveProcessImage();
-                seizeSignalsFromInputProcessImage();
             }
         }
         catch(Error exc){
             Log.error("Error: ", exc);
             Log.error("processing aborted for IOHandler " + this);
+            for (Signal is: getInputSignals()){
+                is.invalidate();                                    
+            }            
             //abort processing of this io handler
             setProcessingAborted(true);
         }
         catch(Exception exc){
             Log.error("Error: ", exc);
+            for (Signal is: getInputSignals()){
+                is.invalidate();                                    
+            }            
             setProcessingAborted(true);
         }
     }
 
     @Override
     public boolean isFinished() {
-        return true;
+        return isProcessingAborted();
     }
     
     protected void transceiveProcessImage() {
         try{
             //get actual input process image from peripherals
             //check for changes of output signals
-            for (IoSignal s: getOutputSignals()) s.checkOut();
+            for (Signal s: getOutputSignals()) {
+            	IoSignal ioSig = (IoSignal)s;
+            	ioSig.checkOut();
+            	transferValueToProcessImage(ioSig);
+            }
             processImage.update();
             //update input signals
-            for (IoSignal s: getInputSignals()) s.checkIn();
+            for (Signal s: getInputSignals()) {
+            	IoSignal ioSig = (IoSignal)s;
+            	transferValueFromProcessImage(ioSig);
+            	ioSig.checkIn();
+            }
             //prepare output image to be transferred to the peripherals
         }
         catch(Exception | Error exc){
             Log.error("Error: ", exc);
         }
     }
+    
+    protected ProcessImageItem seizeProcessImageItem(Signal ioSignal) throws InconsistencyException{
+    	URI              uri              = ((IoSignal)ioSignal).getUri();
+        StringTokenizer  tokenizer        = new StringTokenizer(uri.getPath(), "/");
+        ProcessImageItem processImageItem = null;
+        try{
+            String token = tokenizer.nextToken();
+            //uri : .../<identifier defined in JSON file of PiCtory>
+            processImageItem = getProcessImage().getItem(token);
+            if (processImageItem == null){
+                discardSignal(ioSignal);//remove registration of this signal
+                throw new InconsistencyException("process image item '" + uri.getPath() + "' for signal " + ioSignal.getQualifiedIdentifier() + " not found");
+            }        
+            if (processImageItem.getIoDirection() != IoDirection.INOUT && ((IoSignal)ioSignal).getIoDirection() != processImageItem.getIoDirection()){
+                discardSignal(ioSignal);//remove registration of this signal
+                throw new InconsistencyException("inconsistent io direction for signal " + ioSignal.getQualifiedIdentifier() + ". Must be " + processImageItem.getIoDirection());
+            }
+            if (ioSignal instanceof IoLogical && processImageItem.getAddress().getBitIndex() == Address.NA){
+                discardSignal(ioSignal);//remove registration of this signal already done by super(..)
+                throw new InconsistencyException("signal " + ioSignal.getQualifiedIdentifier() + " must be assigned to bit input/output");            
+            }
+            if (ioSignal instanceof IoSignedInteger && processImageItem.getAddress().getBitIndex() != Address.NA){
+                throw new InconsistencyException("signal " + ioSignal.getQualifiedIdentifier() + " must not be assigned to either byte, int16 or int32 input/output");            
+            }        
+        }
+        catch(AddressException exc){
+            throw new InconsistencyException("illegal address specification in '" + uri.getPath() + "' : " + exc);
+        }
+        return processImageItem; 
+    }
+    
+    protected void transferValueToProcessImage(IoSignal ioSig) throws AddressException, ValueOutOfRangeException{
+    	RemoteSignalInfo rsi = (RemoteSignalInfo)ioSig.getRemoteSignalInfo();
+    	ProcessImageItem pii = rsi.getProcessImageItem();
+    	switch(ioSig.getRemoteSignalInfo().getType()) {
+	    	case Logical:
+	    			pii.getData().setBIT(pii.getAddress().getByteIndex(),pii.getAddress().getBitIndex(), ((LogicalValue)rsi.getValue()).get());
+	    			break;
+	    	case SignedInteger:
+		            switch(pii.getAddress().getSize()){
+	                case 1:
+	                	pii.getData().setBYTE(pii.getAddress().getByteIndex(), ((SignedIntegerValue)rsi.getValue()).get());
+	                    break;
+	                case 2:
+	                	pii.getData().setINT(pii.getAddress().getByteIndex(), ((SignedIntegerValue)rsi.getValue()).get());
+	                    break;
+	                case 4:
+	                	pii.getData().setDINT(pii.getAddress().getByteIndex(), ((SignedIntegerValue)rsi.getValue()).get());
+	                    break;
+		            }
+	    			break;
+	    		default:
+    	}
+    }
+
+    protected void transferValueFromProcessImage(IoSignal ioSig) throws AddressException{
+    	RemoteSignalInfo rsi = (RemoteSignalInfo)ioSig.getRemoteSignalInfo();
+    	ProcessImageItem pii = rsi.getProcessImageItem();
+    	switch(ioSig.getRemoteSignalInfo().getType()) {
+	    	case Logical:
+	    			((LogicalValue)rsi.getValue()).set(pii.getData().getBIT(pii.getAddress().getByteIndex(),pii.getAddress().getBitIndex()));
+	    			break;
+	    	case SignedInteger:
+		            switch(pii.getAddress().getSize()){
+	                case 1:
+	                	((SignedIntegerValue)rsi.getValue()).set(pii.getData().getBYTE(pii.getAddress().getByteIndex()));
+	                    break;
+	                case 2:
+	                	((SignedIntegerValue)rsi.getValue()).set(pii.getData().getINT(pii.getAddress().getByteIndex()));
+	                    break;
+	                case 4:
+	                	((SignedIntegerValue)rsi.getValue()).set(pii.getData().getDINT(pii.getAddress().getByteIndex()));
+	                    break;
+		            }
+	    			break;
+	    		default:
+    	}
+    }
 
     @Override
     public String getHandledScheme() {
-        return this.HANDLEDSCHEME;
+        return HANDLEDSCHEME;
     }
     
     public ProcessImage getProcessImage(){

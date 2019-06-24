@@ -31,8 +31,11 @@ import org.eclipse.milo.opcua.stack.core.Identifiers;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
 import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.StatusCode;
+import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
+import org.eclipse.milo.opcua.stack.core.types.enumerated.MonitoringMode;
 import org.eclipse.milo.opcua.stack.core.types.enumerated.TimestampsToReturn;
 import org.eclipse.milo.opcua.stack.core.types.structured.MonitoredItemCreateRequest;
+import org.eclipse.milo.opcua.stack.core.types.structured.MonitoringParameters;
 import org.eclipse.milo.opcua.stack.core.types.structured.ReadResponse;
 import org.eclipse.milo.opcua.stack.core.types.structured.ReadValueId;
 import java.io.IOException;
@@ -42,17 +45,30 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.HashMap;
 import java.util.concurrent.ExecutionException;
 import org.jpac.Address;
 import org.jpac.AsynchronousTask;
 import org.jpac.InconsistencyException;
 import org.jpac.JPac;
+import org.jpac.Module;
 import org.jpac.ProcessException;
 import org.jpac.SignalAccessException;
 import org.jpac.WrongUseException;
 import org.jpac.plc.AddressException;
-import static org.jpac.vioss.IOHandler.Log;
+import org.jpac.Logical;
+import org.jpac.LogicalValue;
+import org.jpac.SignedInteger;
+import org.jpac.SignedIntegerValue;
+import org.jpac.Decimal;
+import org.jpac.DecimalValue;
+import org.jpac.CharString;
+import org.jpac.CharStringValue;
+
+import static org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned.uint;
 import org.jpac.vioss.IllegalUriException;
+import org.jpac.vioss.IoSignal;
+import org.jpac.Signal;
 
 /**
  *
@@ -78,6 +94,8 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     private ArrayList<NodeId>     writeNodeIds;
     private List<StatusCode>      returnedStatusCodes;
     private ArrayList<NodeId>     checkServerStatusId;
+ 
+    private HashMap<IoSignal, NodeId> nodeIds;
     
     private UaSubscription        subscription;  
     
@@ -100,6 +118,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
         this.endpointUrlExtension  = buildEndpointUrlExtension(uri);
         this.checkServerStatusId   = new ArrayList<>();
         this.checkServerStatusId.add(Identifiers.Server_ServerStatus_State);
+        this.nodeIds               = new HashMap<>();
     }
 
     @Override
@@ -160,6 +179,14 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     @Override
     public void prepare() {
         Log.info("starting up " + this);
+        for (Signal is: getInputSignals()){
+        	IoSignal ioSig = (IoSignal)is;
+        	ioSig.setRemoteSignalInfo(new RemoteSignalInfo(is));
+        }
+        for (Signal os: getOutputSignals()){
+        	IoSignal ioSig = (IoSignal)os;
+        	ioSig.setRemoteSignalInfo(new RemoteSignalInfo(os));
+        }        
         setProcessingStarted(true);        
     }
 
@@ -226,21 +253,27 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
                 throw new IOException("server status code " + serverState.getStatusCode());
             }
             //propagate input signals received over the subscription
-            for(org.jpac.plc.IoSignal ios: getInputSignals()){
-                ios.checkIn();
+            for(Signal ios: getInputSignals()){
+            	//transfer a copy of the monitoredItem to the remoteSignalInfo's value
+            	checkInSignal(ios);
+            	//and transfer it to the signal
+                ((IoSignal)ios).checkIn();
             }
             //prepare output signals for propagation to plc
             writeIoSignals.clear();
             writeNodeIds.clear();
             writeDataValues.clear();
-            for(org.jpac.plc.IoSignal ios: getOutputSignals()){
+            for(Signal ios: getOutputSignals()){
                 IoSignal ioSignal = (IoSignal)ios; 
-                if (ioSignal.isToBePutOut() && ioSignal.isRemotelyAvailable()){
+                if (ioSignal.isToBePutOut() && ((RemoteSignalInfo)ioSignal.getRemoteSignalInfo()).isRemotelyAvailable()){
                     ioSignal.resetToBePutOut();
+                    //transfer changed signal value to the remoteSignalInfo value
                     ioSignal.checkOut();
+                    //and prepare value to be transferred to the remote side
+                    checkOutSignal(ios);
                     writeIoSignals.add(ioSignal);
-                    writeNodeIds.add(ioSignal.getNodeId());
-                    writeDataValues.add(ioSignal.getWriteDataValue());
+                    writeNodeIds.add(((RemoteSignalInfo)ioSignal.getRemoteSignalInfo()).getNodeId());
+                    writeDataValues.add(((RemoteSignalInfo)ioSignal.getRemoteSignalInfo()).getWriteDataValue());
                 }
             }
             if (!writeNodeIds.isEmpty()){
@@ -258,9 +291,9 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
                 boolean transmissionFailed = false;
                 int i = 0;
                 for(IoSignal ios: writeIoSignals){
-                    ios.setStatusCode(returnedStatusCodes.get(i));
+                    ios.setErrorCode(returnedStatusCodes.get(i));
                     if (returnedStatusCodes.get(i).isBad()){
-                        Log.error("Error: failed to write signal " + ((IoSignal)ios).getNodeId().getIdentifier() + " to " + endpointUrl + ". Returned status code: " + returnedStatusCodes.get(i));
+                        Log.error("Error: failed to write signal " + ((RemoteSignalInfo)((IoSignal)ios).getRemoteSignalInfo()).getNodeId().getIdentifier() + " to " + endpointUrl + ". Returned status code: " + returnedStatusCodes.get(i));
                         transmissionFailed = true;
                     }
                     i++;
@@ -272,8 +305,8 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
         }
         finally{
             //make shure, that output signals are marked as being put out
-            for(org.jpac.plc.IoSignal ios: getOutputSignals()){
-                ios.resetToBePutOut();
+            for(Signal ios: getOutputSignals()){
+                ((IoSignal)ios).resetToBePutOut();
             }    
         }
     };    
@@ -295,11 +328,68 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
         }
     };
     
+    protected void checkInSignal(Signal ios) {
+        IoSignal         ioSig = (IoSignal)ios;
+        RemoteSignalInfo rsi   = (RemoteSignalInfo)ioSig.getRemoteSignalInfo();
+        synchronized (rsi) {
+        	if (rsi.getMonitoredItemValueUpdated()) {
+		        if (rsi.getMonitoredItemValue().getStatusCode().isGood()){
+		        	//make a physical copy of the value because its corresponding monitoredItem is written asynchronously by the OPC/UA API
+		        	switch(rsi.getType()) {
+		        		case Logical:
+		        			((LogicalValue)rsi.getValue()).set((boolean)rsi.getMonitoredItemValue().getValue().getValue());
+		        			break;
+		        		case SignedInteger:
+		        			((SignedIntegerValue)rsi.getValue()).set((int)rsi.getMonitoredItemValue().getValue().getValue());
+		        			break;
+		        		case Decimal:
+		        			((DecimalValue)rsi.getValue()).set((double)rsi.getMonitoredItemValue().getValue().getValue());
+		        			break;
+		        		case CharString:
+		        			((CharStringValue)rsi.getValue()).set(new String((String)rsi.getMonitoredItemValue().getValue().getValue()));
+		        			break;
+		        		default:
+		        			throw new WrongUseException("type " + rsi.getType() + " currently not supported with OPC/UA protocol");
+		        	}
+		        	rsi.getValue().setValid(true);
+		            rsi.setCheckInFaultLogged(false);
+		       } else{
+		           if (rsi.isCheckInFaultLogged()){
+		               Log.error(((IoSignal)ioSig).getUri() + " got invalid due to server side error: " + rsi.getMonitoredItemValue().getStatusCode());
+		               rsi.setCheckInFaultLogged(true);
+		           }
+		           rsi.getValue().setValid(false);
+		       }		
+	        }
+        }
+    }
+
+    protected void checkOutSignal(Signal ios) {
+        IoSignal         ioSig = (IoSignal)ios;
+        RemoteSignalInfo rsi   = (RemoteSignalInfo)ioSig.getRemoteSignalInfo();
+    	switch(ioSig.getRemoteSignalInfo().getType()) {
+			case Logical:
+		        rsi.setWriteDataValue(new DataValue(new Variant(ios.isValid() ? ((Logical)ios).get() : null), null, null));
+				break;
+			case SignedInteger:
+		        rsi.setWriteDataValue(new DataValue(new Variant(ios.isValid() ? ((SignedInteger)ios).get() : null), null, null));
+				break;
+			case Decimal:
+		        rsi.setWriteDataValue(new DataValue(new Variant(ios.isValid() ? ((Decimal)ios).get() : null), null, null));
+				break;
+			case CharString:
+		        rsi.setWriteDataValue(new DataValue(new Variant(ios.isValid() ? ((CharString)ios).get() : null), null, null));
+				break;
+			default:
+				throw new WrongUseException("type " + ioSig.getRemoteSignalInfo().getType() + " currently not supported with OPC/UA protocol");
+    	}
+    }
+
     protected DataValue checkServerState(Connection connection){
         DataValue status = null; 
         do{//retry in cases of InterruptedExceptions
            try{
-               status = connection.getClient().readValues(0.0, TimestampsToReturn.Both, checkServerStatusId).get().get(0);
+               status = connection.getClient().readValues(0.0, TimestampsToReturn.Both, checkServerStatusId).get().get(0);               
            }
            catch(InterruptedException exc){}
            catch(ExecutionException   exc){
@@ -311,7 +401,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     }
 
     protected void invalidateInputSignals(){
-        for(org.jpac.plc.IoSignal ios: getInputSignals()){
+        for(Signal ios: getInputSignals()){
             try{ios.invalidate();}catch(SignalAccessException exc){/*cannot happen*/};
         }        
     }
@@ -337,9 +427,13 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
         }
         return epSuffix.toString();
     }
-
+    
+    String encloseWithQuotes(String identifier) {	
+    	return "\"" + identifier.replace (".", "\".\"") + "\"";
+    }    
+    
     @Override
-    public boolean handles(Address address, URI uri) {
+    public boolean handles(URI uri) {
         boolean isHandledByThisInstance = false;
         try{
             isHandledByThisInstance  = uri != null;
@@ -409,9 +503,9 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
                         checkIfAllNodesAreAvailableOnServer(getOutputSignals());
                         ArrayList<MonitoredItemCreateRequest> monitoredItemsRequestList = new ArrayList<>();
                         //collect all input signals which are currently available on the remote server
-                        for (org.jpac.plc.IoSignal ios: getInputSignals()){
-                            if (((IoSignal)ios).isRemotelyAvailable()){
-                                monitoredItemsRequestList.add(((IoSignal)ios).getMonitoredItemCreateRequest());
+                        for (Signal ios: getInputSignals()){
+                            if (((RemoteSignalInfo)((IoSignal)ios).getRemoteSignalInfo()).isRemotelyAvailable()){
+                                monitoredItemsRequestList.add(getMonitoredItemCreateRequest(ios));
                             }
                         }
                         if (monitoredItemsRequestList.size() > 0){
@@ -450,20 +544,21 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
         
         private void assignMonitoredItemsToInputSignals(){
             for (UaMonitoredItem mi: monitoredItems){
-                //Log.info("Status code: " + mi.getStatusCode());
-                ((IoSignal)getInputSignals().get(mi.getClientHandle().intValue())).setMonitoredItem(mi);
+            	Signal sig = getInputSignals().get(mi.getClientHandle().intValue());
+                ((RemoteSignalInfo)((IoSignal)sig).getRemoteSignalInfo()).assignMonitoredItem(mi);
+                //Log.info("Signal " + sig + "Status code: " + mi.getStatusCode());//TODO            
             }
         }
         
-        private boolean checkIfAllNodesAreAvailableOnServer(List<org.jpac.vioss.IoSignal> ioSignals) throws Exception{
+        private boolean checkIfAllNodesAreAvailableOnServer(List<Signal> ioSignals) throws Exception{
             boolean                 done                 = false;
             boolean                 allAvailable         = true;
             ArrayList<ReadValueId>  readDataTypeValueIds = new ArrayList<>();
             ReadResponse            readResponse         = null;
             
             if (ioSignals != null && ioSignals.size() > 0){
-                for (org.jpac.vioss.IoSignal ios: ioSignals){
-                    readDataTypeValueIds.add(((IoSignal)ios).getReadDataTypeValueId());
+                for(Signal ios: ioSignals){
+                    readDataTypeValueIds.add(((RemoteSignalInfo)((IoSignal)ios).getRemoteSignalInfo()).getReadDataTypeValueId());
                 }
                 do{
                     try{
@@ -475,11 +570,11 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
                 while(!done);
                 if (readResponse != null){
                     int i = 0;
-                    for(org.jpac.vioss.IoSignal ios: ioSignals){
+                    for(Signal ios: ioSignals){
                         StatusCode statusCode = readResponse.getResults()[i].getStatusCode();
-                        ((IoSignal)ios).setRemotelyAvailable(statusCode.isGood());
+                        ((RemoteSignalInfo)((IoSignal)ios).getRemoteSignalInfo()).setRemotelyAvailable(statusCode.isGood());
                         if (statusCode.isBad()){
-                            Log.error("failed to access '" + ios.getUri() + "'. Opc ua status code: " + statusCode);
+                            Log.error("failed to access '" + ((IoSignal)ios).getUri() + "'. Opc ua status code: " + statusCode);
                             allAvailable = false;
                         }
                         i++;
@@ -489,6 +584,19 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
             return allAvailable;
         }
         
+        public MonitoredItemCreateRequest getMonitoredItemCreateRequest(Signal signal) {
+            MonitoredItemCreateRequest mcr = null;
+            try{
+            	//TODO samplingInterval, queueSize, discardOldest as driver parameters in configuration ????
+                MonitoringParameters params = new MonitoringParameters(uint(getInputSignals().indexOf(signal)), (double)(JPac.getInstance().getCycleNanoTime() * Module.ms), null, uint(1), true);       
+                mcr                         = new MonitoredItemCreateRequest(((RemoteSignalInfo)((IoSignal)signal).getRemoteSignalInfo()).getReadValueId(), MonitoringMode.Reporting, params);
+            }
+            catch(InconsistencyException exc){
+                Log.error("Error: ",exc);
+            }
+            return mcr;
+        }
+                
         public Connection getConnection(){
             return this.connection;
         }

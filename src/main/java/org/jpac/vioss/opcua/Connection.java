@@ -28,9 +28,8 @@ import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
 import org.eclipse.milo.opcua.sdk.client.api.config.OpcUaClientConfig;
 import org.eclipse.milo.opcua.sdk.client.api.identity.AnonymousProvider;
 import org.eclipse.milo.opcua.sdk.client.api.identity.IdentityProvider;
-import org.eclipse.milo.opcua.sdk.client.api.nodes.VariableNode;
 import org.eclipse.milo.opcua.sdk.client.api.subscriptions.UaSubscription;
-import org.eclipse.milo.opcua.stack.client.UaTcpStackClient;
+import org.eclipse.milo.opcua.stack.client.DiscoveryClient;
 import org.eclipse.milo.opcua.stack.core.security.SecurityPolicy;
 import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
 import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
@@ -44,7 +43,7 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
-import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import org.eclipse.milo.opcua.sdk.client.nodes.UaVariableNode;
 import org.slf4j.LoggerFactory;
@@ -131,15 +130,19 @@ public class Connection{
      * @throws java.io.IOException
      */
     public void connect() throws Exception{
-        EndpointDescription[] endpoints = null;
+//        EndpointDescription[] endpoints = null;
+        List<EndpointDescription> endpoints = null;
 
-        endpoints = UaTcpStackClient.getEndpoints(endpointUrl).get();
+//        endpoints = UaTcpStackClient.getEndpoints(endpointUrl).get();
+        endpoints = DiscoveryClient.getEndpoints(endpointUrl).get();
         if (endpoints == null){
             throw new IOException("endpoint " + endpointUrl + " cannot be reached");
         }
         
-        EndpointDescription endpointDescription = Arrays.stream(endpoints)
-                .filter(e -> e.getSecurityPolicyUri().equals(securityPolicy.getSecurityPolicyUri()))
+//        EndpointDescription endpointDescription = Arrays.stream(endpoints)
+          EndpointDescription endpointDescription = endpoints.stream()
+//                .filter(e -> e.getSecurityPolicyUri().equals(securityPolicy.getSecurityPolicyUri()))
+                .filter(e -> e.getSecurityPolicyUri().equals(securityPolicy.getUri()))
                 .findFirst().orElseThrow(() -> new IOException("endpoints for " + endpointUrl + " not reachable"));              
         clientConfig = OpcUaClientConfig.builder()
             .setEndpoint(endpointDescription)
@@ -150,7 +153,8 @@ public class Connection{
             .setKeyPair(clientKeyPair)
             .setRequestTimeout(uint(requestTimeout))
             .build(); 
-        client = new OpcUaClient(clientConfig);
+//        client = new OpcUaClient(clientConfig);
+        client = OpcUaClient.create(clientConfig);
         client.connect().get();
         connected = true;
     }

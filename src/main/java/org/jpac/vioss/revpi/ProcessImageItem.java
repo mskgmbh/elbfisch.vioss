@@ -26,9 +26,10 @@
 package org.jpac.vioss.revpi;
 
 import com.fasterxml.jackson.databind.JsonNode;
+
+import org.jpac.IoDirection;
 import org.jpac.plc.Address;
 import org.jpac.plc.Data;
-import org.jpac.plc.IoDirection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

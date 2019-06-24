@@ -25,17 +25,19 @@
 
 package org.jpac.vioss.opcua;
 
-import org.eclipse.milo.opcua.stack.core.types.builtin.ExtensionObject;
 import java.net.URI;
 import java.net.URISyntaxException;
 import org.jpac.Event;
+import org.jpac.IoDirection;
 import org.jpac.Logical;
 import org.jpac.Module;
 import org.jpac.ProcessEvent;
 import org.jpac.SignedInteger;
 import org.jpac.opc.Opc;
+import org.jpac.vioss.IoLogical;
+import org.jpac.vioss.IoSignedInteger;
+
 import static org.jpac.opc.Opc.AccessLevel.READ_WRITE;
-import org.jpac.plc.IoDirection;
 
 /**
  * handshake used on the client side of an opc connection
@@ -68,22 +70,18 @@ public class Handshake {
     
     protected final Event           valid;
 
-    public Handshake(Module containingModule, String identifier, URI uri, boolean useQuotes) throws URISyntaxException {
-        this(containingModule, identifier, uri, useQuotes,  100.0, null, 10, false);
-    }
-
-    public Handshake(Module containingModule, String identifier, URI uri,  boolean useQuotes, double samplingRate, ExtensionObject extensionObject, int queueSize, boolean discardOldest) throws URISyntaxException {
+    public Handshake(Module containingModule, String identifier, URI uri) throws URISyntaxException {
         this.identifier = identifier;
         this.uri        = uri;
         
         if (uri != null){
             //handshake is used to access signals on a remote opc server
-            this.request     = new IoLogical(containingModule, identifier + ".Request", new URI(uri + ".Request"), IoDirection.OUTPUT, useQuotes, samplingRate, extensionObject, queueSize, discardOldest);
-            this.ready       = new IoLogical(containingModule, identifier + ".Ready",   new URI(uri + ".Ready"), IoDirection.INPUT, useQuotes, samplingRate, extensionObject, queueSize, discardOldest);
-            this.ack         = new IoLogical(containingModule, identifier + ".Ack",     new URI(uri + ".Ack"), IoDirection.INPUT, useQuotes, samplingRate, extensionObject, queueSize, discardOldest);
-            this.active      = new IoLogical(containingModule, identifier + ".Active",  new URI(uri + ".Active"), IoDirection.INPUT, useQuotes, samplingRate, extensionObject, queueSize, discardOldest);
-            this.command     = new IoSignedInteger(containingModule, identifier + ".Command", new URI(uri + ".Command"), IoDirection.OUTPUT, useQuotes, samplingRate, extensionObject, queueSize, discardOldest);
-            this.result      = new IoSignedInteger(containingModule, identifier + ".Result", new URI(uri + ".Result"), IoDirection.INPUT, useQuotes, samplingRate, extensionObject, queueSize, discardOldest);
+            this.request     = new IoLogical(containingModule, identifier + ".Request", new URI(uri + ".Request"), IoDirection.OUTPUT);
+            this.ready       = new IoLogical(containingModule, identifier + ".Ready",   new URI(uri + ".Ready"), IoDirection.INPUT);
+            this.ack         = new IoLogical(containingModule, identifier + ".Ack",     new URI(uri + ".Ack"), IoDirection.INPUT);
+            this.active      = new IoLogical(containingModule, identifier + ".Active",  new URI(uri + ".Active"), IoDirection.INPUT);
+            this.command     = new IoSignedInteger(containingModule, identifier + ".Command", new URI(uri + ".Command"), IoDirection.OUTPUT);
+            this.result      = new IoSignedInteger(containingModule, identifier + ".Result", new URI(uri + ".Result"), IoDirection.INPUT);
             //initialize output signals
             this.request.setDeferred(false);
             this.command.setDeferred(DONTCAREINTEGER);
@@ -116,9 +114,6 @@ public class Handshake {
      * @param command
      */
     public void request(int command){
-//        if (!areRequestParameterSignalsValid() || areRequestParameterValuesDontCare()){
-//            throw new InconsistencyException("application specific parameters must have been set prior to this call");
-//        }
         this.command.setDeferred(command);
         this.request.setDeferred(true);
     }

@@ -31,8 +31,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import org.jpac.Address;
+import org.jpac.IoDirection;
 import org.jpac.plc.Data;
-import org.jpac.plc.IoDirection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,14 +65,14 @@ public class Device {
     protected ArrayList<ProcessImageItem> memoryItems;
     protected ArrayList<ProcessImageItem> extendItems;
     
+    protected ProcessImage                processImage;
     protected ProcessImageItem            searchedProcessImageItem;
-    protected LinuxFile                   piControl0;
     
     protected byte[]                      snapshot;
     
     protected boolean                     bit;
 
-    public Device(JsonNode deviceNode, LinuxFile piControl0){
+    public Device(JsonNode deviceNode, ProcessImage processImage){
         ProcessImageItem  pii = null;
         int numberOfBytes = 0;
         int imageOffset   = 0;
@@ -80,8 +80,10 @@ public class Device {
         this.offset       = deviceNode.at(OFFSET).asInt();
 
         Log.debug("added device {} at offset {}", this.identifier, this.offset);
-        imageOffset   = 0;
-        numberOfBytes = 0;
+        imageOffset       = 0;
+        numberOfBytes     = 0;
+
+        this.processImage = processImage;
         this.inputs   = new ArrayList<>();
         Iterator<JsonNode> inputNodes = deviceNode.at(INPUT).elements();
         this.inputImage = new Data(DUMMY, Data.Endianness.LITTLEENDIAN);
@@ -146,7 +148,6 @@ public class Device {
             this.extendImage.setBytes(new byte[numberOfBytes]);
         }    
         this.snapshot   = new byte[inputImage.getBytes().length + outputImage.getBytes().length + memoryImage.getBytes().length + extendImage.getBytes().length];
-        this.piControl0 = piControl0;
 //        //initialize memory/extend portion of this device with the state of the associated portion of the process image on startup of this application
 //        try{
 //            piControl0.seek(offset + inputImage.getBytes().length + outputImage.getBytes().length);//skip input/output area
@@ -174,35 +175,35 @@ public class Device {
         
     public void updateProcessImage(){
         try{
-            if (!ProcessImage.simulation){
+            if (!processImage.simulation){
                 //write writable portions of the process image
-                piControl0.seek(offset + inputImage.getBytes().length);//skip input area
-                piControl0.write(outputImage.getBytes(), 0, outputImage.getBytes().length);
+                processImage.piControl0.seek(offset + inputImage.getBytes().length);//skip input area
+                processImage.piControl0.write(outputImage.getBytes(), 0, outputImage.getBytes().length);
                 //piControl0.write(memoryImage.getBytes(), 0, memoryImage.getBytes().length);
                 //piControl0.write(extendImage.getBytes(), 0, extendImage.getBytes().length);        
                 //get snapshot of actual process image
-                piControl0.seek(offset);
-                piControl0.read(inputImage.getBytes(), 0, inputImage.getBytes().length);
-                piControl0.seek(piControl0.getFilePointer() + outputImage.getBytes().length);//skip output area
-                piControl0.read(memoryImage.getBytes(), 0, memoryImage.getBytes().length);                
-                piControl0.read(extendImage.getBytes(), 0, extendImage.getBytes().length);
+                processImage.piControl0.seek(offset);
+                processImage.piControl0.read(inputImage.getBytes(), 0, inputImage.getBytes().length);
+                processImage.piControl0.seek(processImage.piControl0.getFilePointer() + outputImage.getBytes().length);//skip output area
+                processImage.piControl0.read(memoryImage.getBytes(), 0, memoryImage.getBytes().length);                
+                processImage.piControl0.read(extendImage.getBytes(), 0, extendImage.getBytes().length);
             } else {
                 //write writable portions of the process image
                 int byteOffset = offset + inputImage.getBytes().length;
-                System.arraycopy(outputImage.getBytes(), 0, ProcessImage.simulatedProcessImage.getBytes(), byteOffset, outputImage.getBytes().length);
+                System.arraycopy(outputImage.getBytes(), 0, processImage.simulatedProcessImage.getBytes(), byteOffset, outputImage.getBytes().length);
                 byteOffset += outputImage.getBytes().length;
-                System.arraycopy(memoryImage.getBytes(), 0, ProcessImage.simulatedProcessImage.getBytes(), byteOffset, memoryImage.getBytes().length);
+                System.arraycopy(memoryImage.getBytes(), 0, processImage.simulatedProcessImage.getBytes(), byteOffset, memoryImage.getBytes().length);
                 byteOffset += memoryImage.getBytes().length;
-                System.arraycopy(extendImage.getBytes(), 0, ProcessImage.simulatedProcessImage.getBytes(), byteOffset, extendImage.getBytes().length);
+                System.arraycopy(extendImage.getBytes(), 0, processImage.simulatedProcessImage.getBytes(), byteOffset, extendImage.getBytes().length);
                 //get snapshot of actual process image
                 byteOffset = offset;
-                System.arraycopy(ProcessImage.simulatedProcessImage.getBytes(), byteOffset, inputImage.getBytes(), 0, inputImage.getBytes().length);
+                System.arraycopy(processImage.simulatedProcessImage.getBytes(), byteOffset, inputImage.getBytes(), 0, inputImage.getBytes().length);
                 byteOffset += inputImage.getBytes().length;
-                System.arraycopy(ProcessImage.simulatedProcessImage.getBytes(), byteOffset, outputImage.getBytes(), 0, outputImage.getBytes().length);
+                System.arraycopy(processImage.simulatedProcessImage.getBytes(), byteOffset, outputImage.getBytes(), 0, outputImage.getBytes().length);
                 byteOffset += outputImage.getBytes().length;
-                System.arraycopy(ProcessImage.simulatedProcessImage.getBytes(), byteOffset, memoryImage.getBytes(), 0, memoryImage.getBytes().length);
+                System.arraycopy(processImage.simulatedProcessImage.getBytes(), byteOffset, memoryImage.getBytes(), 0, memoryImage.getBytes().length);
                 byteOffset += memoryImage.getBytes().length;
-                System.arraycopy(ProcessImage.simulatedProcessImage.getBytes(), byteOffset, extendImage.getBytes(), 0, extendImage.getBytes().length);
+                System.arraycopy(processImage.simulatedProcessImage.getBytes(), byteOffset, extendImage.getBytes(), 0, extendImage.getBytes().length);
             }
         }
         catch(Exception exc){

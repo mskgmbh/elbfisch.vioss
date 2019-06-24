@@ -23,7 +23,6 @@
  * along with the jPac If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 package org.jpac.vioss.revpi;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -55,8 +54,8 @@ public class ProcessImage {
 
     protected LinuxFile         piControl0;
     protected ArrayList<Device> devices;
-    protected static Data       simulatedProcessImage;
-    protected static boolean    simulation;
+    protected Data              simulatedProcessImage;
+    protected boolean           simulation;
 
     protected String            piCtoryConfigFileName; 
     
@@ -72,12 +71,13 @@ public class ProcessImage {
             this.simulation            = true;
             this.piCtoryConfigFileName = SIMCONFIGFILE;
         }
-        ObjectMapper mapper      = new ObjectMapper();
-        JsonNode     rootNode    = mapper.readTree(new FileReader(piCtoryConfigFileName));
-        Iterator     deviceNodes = rootNode.at(DEVICES).elements();
+        ObjectMapper       mapper      = new ObjectMapper();
+        JsonNode           rootNode    = mapper.readTree(new FileReader(piCtoryConfigFileName));
+        Iterator<JsonNode> deviceNodes = rootNode.at(DEVICES).elements();
         
+        //aggregation of devices must be done as last operation in this constructor
         this.devices             = new ArrayList<>();
-        deviceNodes.forEachRemaining((devNode) -> this.devices.add(new Device((JsonNode)devNode, this.piControl0)));
+        deviceNodes.forEachRemaining((devNode) -> this.devices.add(new Device((JsonNode)devNode, this)));
     }
     
     public void update(){
