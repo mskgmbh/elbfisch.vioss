@@ -588,7 +588,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
             MonitoredItemCreateRequest mcr = null;
             try{
             	//TODO samplingInterval, queueSize, discardOldest as driver parameters in configuration ????
-                MonitoringParameters params = new MonitoringParameters(uint(getInputSignals().indexOf(signal)), (double)(JPac.getInstance().getCycleNanoTime() * Module.ms), null, uint(1), true);       
+                MonitoringParameters params = new MonitoringParameters(uint(getInputSignals().indexOf(signal)), (double)(JPac.getInstance().getCycleTime()/Module.ms), null, uint(1), true);       
                 mcr                         = new MonitoredItemCreateRequest(((RemoteSignalInfo)((IoSignal)signal).getRemoteSignalInfo()).getReadValueId(), MonitoringMode.Reporting, params);
             }
             catch(InconsistencyException exc){
