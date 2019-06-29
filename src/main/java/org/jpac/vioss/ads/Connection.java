@@ -36,10 +36,10 @@ import java.util.StringTokenizer;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
 import org.jpac.vioss.InvalidAddressException;
-import com.google.common.io.LittleEndianDataInputStream;
-import com.google.common.io.LittleEndianDataOutputStream;
+import org.jpac.vioss.LittleEndianDataInputStream;
+import org.jpac.vioss.LittleEndianDataOutputStream;
 /**
- * represents a TCP/IP connection to a MODBUS plc.
+ * represents a TCP/IP connection to a Beckhoff plc.
  *
  */
 public class Connection{
@@ -177,7 +177,7 @@ public class Connection{
             socket.setSoTimeout(SOCKETTIMEOUT);
 
             // prepare streams here
-             in  = new com.google.common.io.LittleEndianDataInputStream(new BufferedInputStream(socket.getInputStream()));
+             in  = new LittleEndianDataInputStream(new BufferedInputStream(socket.getInputStream()));
              out = new LittleEndianDataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
             
             connected = true;

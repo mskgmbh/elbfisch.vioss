@@ -53,21 +53,23 @@ public class WriteMultipleInChunks {
         if (writeMultipes == null){
             //build chunks of requests according to the maximum number of requests per transaction
             int                  numberOfChunks  = (amsPackets.size() + maxNumberOfPacketsPerChunk - 1) / maxNumberOfPacketsPerChunk;
-            int                  chunkSize       = amsPackets.size() / numberOfChunks;
             int                  actualChunkSize = 0; 
             int                  actualChunk     = 0;
             AdsWriteMultiple wm = new AdsWriteMultiple();
             writeMultipes = new ArrayList<>();
-            writeMultipes.add(wm);
-            for (AmsPacket adsPacket : amsPackets) {
-                if (actualChunkSize >= chunkSize && actualChunk != numberOfChunks -1){
-                    wm = new AdsWriteMultiple();
-                    writeMultipes.add(wm);
-                    actualChunkSize = 0;
-                    actualChunk++;
-                }
-                wm.addAmsPacket(adsPacket);
-                actualChunkSize++;
+            if (numberOfChunks > 0) {
+                int chunkSize = amsPackets.size() / numberOfChunks;
+	            writeMultipes.add(wm);
+	            for (AmsPacket adsPacket : amsPackets) {
+	                if (actualChunkSize >= chunkSize && actualChunk != numberOfChunks -1){
+	                    wm = new AdsWriteMultiple();
+	                    writeMultipes.add(wm);
+	                    actualChunkSize = 0;
+	                    actualChunk++;
+	                }
+	                wm.addAmsPacket(adsPacket);
+	                actualChunkSize++;
+	            }
             }
         }
         for (AdsWriteMultiple wm: writeMultipes){
