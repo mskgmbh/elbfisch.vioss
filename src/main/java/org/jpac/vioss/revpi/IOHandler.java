@@ -33,6 +33,7 @@ import java.io.RandomAccessFile;
 import java.net.URI;
 import java.util.StringTokenizer;
 
+import org.apache.commons.configuration.SubnodeConfiguration;
 import org.jpac.Address;
 import org.jpac.InconsistencyException;
 import org.jpac.IoDirection;
@@ -62,8 +63,8 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     protected ProcessImage     processImage;
     protected boolean          runningOnRevPi;
                 
-    public IOHandler(URI uri) throws IllegalUriException, IOException{
-        super(uri);
+    public IOHandler(URI uri, SubnodeConfiguration subnodeConfiguration) throws IllegalUriException, IOException {
+        super(uri, subnodeConfiguration);
         if (!getHandledScheme().equals(uri.getScheme().toUpperCase())){
             throw new IllegalUriException("scheme '" + uri.getScheme() + "' not handled by " + toString());
         }

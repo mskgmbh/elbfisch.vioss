@@ -25,6 +25,7 @@
 
 package org.jpac.vioss.opcua;
 
+import org.apache.commons.configuration.SubnodeConfiguration;
 import org.eclipse.milo.opcua.sdk.client.api.subscriptions.UaMonitoredItem;
 import org.eclipse.milo.opcua.sdk.client.api.subscriptions.UaSubscription;
 import org.eclipse.milo.opcua.stack.core.Identifiers;
@@ -102,8 +103,8 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     private String                endpointUrl;  
     private String                endpointUrlExtension;
         
-    public IOHandler(URI uri) throws IllegalUriException {
-        super(uri);
+    public IOHandler(URI uri, SubnodeConfiguration subnodeConfiguration) throws IllegalUriException {
+        super(uri, subnodeConfiguration);
         if (!getHandledScheme().equals(uri.getScheme().toUpperCase())){
             JPac.getInstance().unregisterCyclicTask(this);
             throw new IllegalUriException("scheme '" + uri.getScheme() + "' not handled by " + toString());

@@ -31,6 +31,7 @@ import java.net.URI;
 import org.jpac.ProcessException;
 import org.jpac.Signal;
 import org.jpac.SignalInvalidException;
+import org.apache.commons.configuration.SubnodeConfiguration;
 import org.jpac.LogicalValue;
 import org.jpac.vioss.IllegalUriException;
 import org.jpac.vioss.IoSignal;
@@ -46,8 +47,8 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
 
     final static String HANDLEDSCHEME       = "PI.GPIO";
                 
-    public IOHandler(URI uri) throws IllegalUriException{
-        super(uri);
+    public IOHandler(URI uri, SubnodeConfiguration subnodeConfiguration) throws IllegalUriException {
+        super(uri, subnodeConfiguration);
         if (!getHandledScheme().equals(uri.getScheme().toUpperCase())){
             throw new IllegalUriException("scheme '" + uri.getScheme() + "' not handled by " + toString());
         }

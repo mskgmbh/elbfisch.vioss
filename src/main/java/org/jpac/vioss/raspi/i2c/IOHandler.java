@@ -32,6 +32,7 @@ import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.commons.configuration.SubnodeConfiguration;
 import org.jpac.IoDirection;
 import org.jpac.ProcessException;
 import org.jpac.Signal;
@@ -72,8 +73,8 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     protected  boolean runningOnRaspi;
     protected  boolean properlyPrepared;
                 
-    public IOHandler(URI uri) throws IllegalUriException{
-        super(uri);
+    public IOHandler(URI uri, SubnodeConfiguration subnodeConfiguration) throws IllegalUriException {
+        super(uri, subnodeConfiguration);
         if (!getHandledScheme().equals(uri.getScheme().toUpperCase())){
             throw new IllegalUriException("scheme '" + uri.getScheme() + "' not handled by " + toString());
         }

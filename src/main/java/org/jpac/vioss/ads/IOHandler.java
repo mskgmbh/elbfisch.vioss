@@ -34,6 +34,7 @@ import org.jpac.Signal;
 import org.jpac.LogicalValue;
 import org.jpac.SignedIntegerValue;
 import org.jpac.vioss.IoSignal;
+import org.apache.commons.configuration.SubnodeConfiguration;
 import org.jpac.AsynchronousTask;
 import org.jpac.InconsistencyException;
 import org.jpac.NumberOutOfRangeException;
@@ -73,8 +74,8 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     protected HashMap<IoSignal,AdsWriteVariableByHandle> listOfAdsWriteVariableByHandle;
     protected HashMap<Integer,AdsGetSymbolHandleByName>  listOfAdsGetSymbolHandleByName;
         
-    public IOHandler(URI uri) throws IllegalUriException {
-        super(uri);
+    public IOHandler(URI uri, SubnodeConfiguration subnodeConfiguration) throws IllegalUriException {
+        super(uri, subnodeConfiguration);
         if (!getHandledScheme().equals(uri.getScheme().toUpperCase())){
             throw new IllegalUriException("scheme '" + uri.getScheme() + "' not handled by " + toString());
         }
