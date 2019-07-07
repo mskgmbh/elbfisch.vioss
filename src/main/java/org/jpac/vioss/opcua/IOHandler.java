@@ -69,6 +69,8 @@ import org.jpac.CharStringValue;
 import static org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned.uint;
 import org.jpac.vioss.IllegalUriException;
 import org.jpac.vioss.IoSignal;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.jpac.Signal;
 
 /**
@@ -76,6 +78,7 @@ import org.jpac.Signal;
  * @author berndschuster
  */
 public class IOHandler extends org.jpac.vioss.IOHandler{
+    static Logger Log = LoggerFactory.getLogger("jpac.vioss.opcua");
     private final static String             HANDLEDSCHEME             = "OPC.TCP";
     private final static double             DEFAULTPUBLISHINGINTERVAL = 10.0;//ms
     private final static TimestampsToReturn DEFAULTTIMESTAMPTORETURN  = TimestampsToReturn.Neither;
@@ -103,8 +106,8 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     private String                endpointUrl;  
     private String                endpointUrlExtension;
         
-    public IOHandler(URI uri, SubnodeConfiguration subnodeConfiguration) throws IllegalUriException {
-        super(uri, subnodeConfiguration);
+    public IOHandler(URI uri, SubnodeConfiguration parameterConfiguration) throws IllegalUriException {
+        super(uri, parameterConfiguration);
         if (!getHandledScheme().equals(uri.getScheme().toUpperCase())){
             JPac.getInstance().unregisterCyclicTask(this);
             throw new IllegalUriException("scheme '" + uri.getScheme() + "' not handled by " + toString());

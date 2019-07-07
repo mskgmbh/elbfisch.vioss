@@ -63,8 +63,8 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     protected ProcessImage     processImage;
     protected boolean          runningOnRevPi;
                 
-    public IOHandler(URI uri, SubnodeConfiguration subnodeConfiguration) throws IllegalUriException, IOException {
-        super(uri, subnodeConfiguration);
+    public IOHandler(URI uri, SubnodeConfiguration parameterConfiguration) throws IllegalUriException, IOException {
+        super(uri, parameterConfiguration);
         if (!getHandledScheme().equals(uri.getScheme().toUpperCase())){
             throw new IllegalUriException("scheme '" + uri.getScheme() + "' not handled by " + toString());
         }

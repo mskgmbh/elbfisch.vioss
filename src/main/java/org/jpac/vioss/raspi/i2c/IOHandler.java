@@ -73,8 +73,8 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     protected  boolean runningOnRaspi;
     protected  boolean properlyPrepared;
                 
-    public IOHandler(URI uri, SubnodeConfiguration subnodeConfiguration) throws IllegalUriException {
-        super(uri, subnodeConfiguration);
+    public IOHandler(URI uri, SubnodeConfiguration parameterConfiguration) throws IllegalUriException {
+        super(uri, parameterConfiguration);
         if (!getHandledScheme().equals(uri.getScheme().toUpperCase())){
             throw new IllegalUriException("scheme '" + uri.getScheme() + "' not handled by " + toString());
         }
