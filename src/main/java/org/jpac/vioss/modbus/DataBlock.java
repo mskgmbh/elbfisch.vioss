@@ -42,7 +42,7 @@ public class DataBlock {
         protected FunctionCode    readFunctionCode;  //block read command for accessing the data block
         protected FunctionCode    writeFunctionCode; //block write command for accessing the data block
         protected Iec61131Address iec61131Address;   //IEC61131 address of this data block (1st word)
-        protected Data            data;              //contence of this data block
+        protected Data            data;              //contence of this data block        
 
         public DataBlock(int address, int size, FunctionCode readFunctionCode, FunctionCode writeFunctionCode, Iec61131Address iec61131Address){
             this.address           = address;
@@ -67,7 +67,7 @@ public class DataBlock {
             if (writeFunctionCode != FunctionCode.UNDEFINED && !writeFunctionCode.isWriteFunctionBlock()) {
             	throw new WrongUseException("applied writeFunctionCode must be a write FC for "+ iec61131Address.getAddressSpecifier());
             }
-            this.data = new Data(new byte[2 * this.size]);
+            this.data = new Data(new byte[2 * this.size]);            
         }
 
 		public int getAddress() {
@@ -81,7 +81,7 @@ public class DataBlock {
 		public Data getData() {
 			return this.data;
 		}
-
+		
 		public FunctionCode getReadFunctionCode() {
 			return readFunctionCode;
 		}
@@ -98,9 +98,9 @@ public class DataBlock {
 			boolean contained = false;
 			contained  = this.iec61131Address.accessMode == iec61131Address.accessMode   &&
 			             this.iec61131Address.getAddress() <= iec61131Address.getAddress() &&
-			             this.iec61131Address.getAddress() + this.size > iec61131Address.getAddress();
+			             this.iec61131Address.getAddress() + this.size > (iec61131Address.getType() != Iec61131Address.Type.BYTE ? iec61131Address.getAddress()/*[word]*/ : iec61131Address.getAddress()/2/*[byte]*/);
 			return contained;
-		}
+		}	
 		
 		@Override
 		public String toString() {

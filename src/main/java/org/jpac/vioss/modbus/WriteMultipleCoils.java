@@ -79,8 +79,8 @@ public class WriteMultipleCoils implements Request{
         conn.getOutputStream().writeShort((short)LENGTHFIELD);                               //length field
         conn.getOutputStream().writeByte((byte)UNITIDENTIFIER);                              //unit identifier (not used)        
         conn.getOutputStream().writeByte((byte)FunctionCode.WRITEMULTIPLECOILS.getValue());  //function code
-        conn.getOutputStream().writeShort((short)dataBlock.getAddress());                    //address of the first register
-        conn.getOutputStream().writeShort((short)(16 * dataBlock.getSize()));                //bit count
+        conn.getOutputStream().writeShort((short)dataBlock.getAddress());                    //address of the first coil
+        conn.getOutputStream().writeShort((short)(16 * dataBlock.getSize()));                //number of coils
         conn.getOutputStream().writeByte((byte)(2 * dataBlock.getSize()));                   //byte count of the registers to write 
     }
     
@@ -99,11 +99,12 @@ public class WriteMultipleCoils implements Request{
             throw new IOException("inconsistent unit identifier received over modbus connection " + conn + " : " + unitIdentifier);            
         }
         int functionCode    = (int)conn.getInputStream().readByte();
+        if (functionCode != FunctionCode.WRITEMULTIPLECOILS.getValue()){
+        	int exceptionCode = (int)conn.getInputStream().readByte();
+            throw new IOException("exception received from modbus device over connection " + conn + " : function code = " + Integer.toHexString(functionCode) + " exception code = " + exceptionCode);            
+        }  
         int startingAddress = (int)conn.getInputStream().readShort();
         int bitcount        = (int)conn.getInputStream().readShort();
-        if (functionCode != FunctionCode.WRITEMULTIPLECOILS.getValue()){
-            throw new IOException("exception received from modbus device over connection " + conn + " : function code = " + functionCode + " Exception code " + (startingAddress & 0xFF));            
-        }  
         if (bitcount != 16 * dataBlock.getSize()){
             throw new IOException("inconsistent byte count received from modbus device over connection " + conn + " : " + bitcount);                        
         }                
@@ -127,7 +128,7 @@ public class WriteMultipleCoils implements Request{
        try{
            conn = new Connection("192.168.1.200", 502);
            
-           DataBlock db = new DataBlock(0,2, FunctionCode.UNDEFINED, FunctionCode.WRITEMULTIPLECOILS, new Iec61131Address("%QW0"));   
+           DataBlock db = new DataBlock(0,2, FunctionCode.UNDEFINED, FunctionCode.WRITEMULTIPLECOILS, new Iec61131Address("QW0"));   
            WriteMultipleCoils wreq = new WriteMultipleCoils(db);
            long startTime;
            long stopTime;

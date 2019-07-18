@@ -32,6 +32,7 @@ import org.jpac.ProcessException;
 import org.jpac.Signal;
 import org.jpac.SignalInvalidException;
 import org.apache.commons.configuration.SubnodeConfiguration;
+import org.jpac.IoDirection;
 import org.jpac.LogicalValue;
 import org.jpac.vioss.IllegalUriException;
 import org.jpac.vioss.IoSignal;
@@ -55,7 +56,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     }
     
     @Override
-    public boolean handles(URI uri) {
+    public boolean handles(URI uri, IoDirection ioDirection) {
         boolean isHandledByThisInstance = false;
         try{
             isHandledByThisInstance  = uri != null;

@@ -77,13 +77,13 @@ public class ReadCoils implements Request{
     }
 
     protected void writeRequestHeader(Connection conn) throws IOException{
-        conn.getOutputStream().writeShort(getNextTransactionIdentifier());                  //transaction id
-        conn.getOutputStream().writeShort((short)PROTOCOLIDENTIFIER);                       //protocol identifier (always 0x0000)
-        conn.getOutputStream().writeShort((short)LENGTHFIELD);                              //protocol identifier (always 0x0000)
-        conn.getOutputStream().writeByte((byte)UNITIDENTIFIER);                             //unit identifier (not used)        
-        conn.getOutputStream().writeByte((byte)FunctionCode.READCOILS.getValue());          //function code
-        conn.getOutputStream().writeShort((short)dataBlock.getAddress());                   //address of the first register
-        conn.getOutputStream().writeShort((short)16 * dataBlock.getSize());                 //number of registers
+        conn.getOutputStream().writeShort(getNextTransactionIdentifier());         //transaction id
+        conn.getOutputStream().writeShort((short)PROTOCOLIDENTIFIER);              //protocol identifier (always 0x0000)
+        conn.getOutputStream().writeShort((short)LENGTHFIELD);                     //length field (always 0x0006)
+        conn.getOutputStream().writeByte((byte)UNITIDENTIFIER);                    //unit identifier (not used)        
+        conn.getOutputStream().writeByte((byte)FunctionCode.READCOILS.getValue()); //function code
+        conn.getOutputStream().writeShort((short)dataBlock.getAddress());          //address of the first coil
+        conn.getOutputStream().writeShort((short)16 * dataBlock.getSize());        //number of coils
     }
     
     protected void readResponseHeader(Connection conn) throws IOException{
@@ -101,10 +101,11 @@ public class ReadCoils implements Request{
             throw new IOException("inconsistent unit identifier received from modbus device over connection " + conn + " : " + unitIdentifier);            
         }
         int functionCode  = (int)conn.getInputStream().readByte();
+        if (functionCode != FunctionCode.READCOILS.getValue()){
+        	int exceptionCode = (int)conn.getInputStream().readByte();
+            throw new IOException("exception received from modbus device over connection " + conn + " : function code = " + Integer.toHexString(functionCode) + " exception code = " + exceptionCode);            
+        }          
         int byteCount     = (int)conn.getInputStream().readByte();
-        if (functionCode != (byte)FunctionCode.READCOILS.getValue()){
-            throw new IOException("exception received from modbus device over connection " + conn + " : function code = " + functionCode + ", exception code:" + byteCount);            
-        }        
         if (byteCount != 2 * dataBlock.getSize()){
             throw new IOException("inconsistent byte count received from modbus device over connection " + conn + " : " + byteCount);                        
         }
@@ -129,7 +130,7 @@ public class ReadCoils implements Request{
            conn = new Connection("192.168.1.200", 502);
            
            Data rxData = new Data(new byte[8]);
-           ReadCoils rwreq = new ReadCoils(new DataBlock(0,2,FunctionCode.READCOILS, FunctionCode.UNDEFINED, new Iec61131Address("%IW0")));
+           ReadCoils rwreq = new ReadCoils(new DataBlock(2,1,FunctionCode.READCOILS, FunctionCode.UNDEFINED, new Iec61131Address("IW0")));
            long startTime;
            long stopTime;
            for (int i = 0; i < 10000; i++){
@@ -138,8 +139,7 @@ public class ReadCoils implements Request{
                 rwreq.read(conn);
                 //txData.setBIT(0, 0, i % 2 == 0);
                 //txData.setBIT(1, 0, i % 2 == 1);
-                stopTime = System.nanoTime();
-                System.out.println(rxData.getBIT(1, 7) + " duration: " + (stopTime - startTime));
+                System.out.println("rwreq data : " + rwreq.getData());
            }
            System.out.println(conn);
            conn.close();

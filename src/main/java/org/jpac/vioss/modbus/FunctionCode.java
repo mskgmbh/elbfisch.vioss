@@ -59,6 +59,11 @@ public enum FunctionCode {
     public boolean isWriteFunctionBlock() {
     	return this.equals(WRITEMULTIPLECOILS) || this.equals(WRITEMULTIPLEREGISTERS);
     }
+    
+    public boolean isRegisterOriented() {
+    	return this.equals(READHOLDINGREGISTERS)   || this.equals(READINPUTREGISTERS) || this.equals(READWRITEREGISTERS) || 
+    		   this.equals(WRITEMULTIPLEREGISTERS) || this.equals(READHOLDINGREGISTERS);
+    }
 
     static public FunctionCode fromInt(int ifc) {
     	switch(ifc) {

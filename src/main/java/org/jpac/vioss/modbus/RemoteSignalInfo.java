@@ -40,11 +40,15 @@ import org.jpac.vioss.modbus.Iec61131Address.AccessMode;
 public class RemoteSignalInfo extends org.jpac.vioss.RemoteSignalInfo{
     
     private Signal          ioSignal;
+    private DataBlock       assignedDataBlock;
     private Iec61131Address iec61131Address;
+	private int             dataByteIndex;//byte index in org.jpac.plc.Data
+	private int             dataBitIndex; //bit index in org.jpac.plc.Data    
 
-    public RemoteSignalInfo(Signal ioSignal){
+    public RemoteSignalInfo(Signal ioSignal, DataBlock assignedDataBlock){
     	super(ioSignal.getIdentifier(), BasicSignalType.fromSignal(ioSignal));
-    	this.ioSignal = ioSignal;
+    	this.ioSignal          = ioSignal;
+    	this.assignedDataBlock = assignedDataBlock;
     	try {
             StringTokenizer pathTokens = new StringTokenizer(((IoSignal)ioSignal).getUri().getPath(),"/");
             if (pathTokens.countTokens() != 2) {
@@ -62,9 +66,59 @@ public class RemoteSignalInfo extends org.jpac.vioss.RemoteSignalInfo{
     	} catch(InvalidAddressSpecifierException exc) {
     		Log.error("Error:", exc);
     	}
+		//provide data byte and bit index for accessing org.jpac.plc.Data
+		//considering the byte order of the modbus protocol being big endian for accessing the data block inside the modbus device as registers
+    	boolean registerAccess = assignedDataBlock.getReadFunctionCode().isRegisterOriented() || assignedDataBlock.getWriteFunctionCode().isRegisterOriented();//access mode is either read or write (not both at the same time)
+		switch(iec61131Address.getType()) {
+			case BIT:
+				dataByteIndex = 2 * (iec61131Address.getAddress() - assignedDataBlock.getIec61131Address().getAddress());//address is word address.
+				dataBitIndex  = iec61131Address.getBitAddress();
+				if (registerAccess) {
+					//consider big endianness
+					if (dataBitIndex > 7) {
+						dataBitIndex -= 8;
+					} else {
+						dataByteIndex++;
+					}
+				}
+				break;
+			case BYTE:
+				dataByteIndex = iec61131Address.getAddress()/*[byte]*/ - 2 * assignedDataBlock.getIec61131Address().getAddress()/*[word]*/; 
+				dataBitIndex  = 0;
+				if (registerAccess) {
+					//consider big endianness
+					if (dataByteIndex % 2 == 0) {
+						dataByteIndex++; //byte address even, access low byte
+					} else {
+						dataByteIndex--; //byte address odd, access high byte
+					}
+				}
+				break;			
+			case WORD:
+			case DWORD:
+				dataByteIndex = 2 * (iec61131Address.getAddress() - assignedDataBlock.getIec61131Address().getAddress());//address is word address
+				dataBitIndex  = 0;
+				break;
+			default:
+				//cannot happen
+				break;
+		}
+		Log.debug(ioSignal + " assigned to " + assignedDataBlock + " dataByteIndex = " + dataByteIndex + " databitIndex = " + dataBitIndex);
     }
     
     public Iec61131Address getIec61131Address() {
     	return this.iec61131Address;
+    }
+    
+    public DataBlock getAssignedDataBlock() {
+    	return this.assignedDataBlock;
+    }
+
+    public int getDataByteIndex() {
+    	return this.dataByteIndex;
+    }
+
+    public int getDataBitIndex() {
+    	return this.dataBitIndex;
     }
 }

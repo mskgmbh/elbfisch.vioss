@@ -41,14 +41,11 @@ public class ReadHoldingRegisters implements Request{
     private final static int LENGTHFIELD        = 0x0006;
     
     private DataBlock dataBlock;
-    private Data      data;
 
     private int     transactionIdentifier;
     
     public ReadHoldingRegisters(DataBlock dataBlock){
-
         this.dataBlock = dataBlock;
-        this.data      = new Data(new byte[2 * dataBlock.getSize()]);
     }
 
     @Override
@@ -71,7 +68,7 @@ public class ReadHoldingRegisters implements Request{
         int numberOfBytes = 2 * dataBlock.getSize();
         try{
             for (int i = 0; i < numberOfBytes; i++){
-                data.setBYTE(i, (int)conn.getInputStream().readByte() & 0x000000FF);
+                getData().setBYTE(i, (int)conn.getInputStream().readByte() & 0x000000FF);
             }
         }
         catch(AddressException | ValueOutOfRangeException exc){
@@ -132,7 +129,7 @@ public class ReadHoldingRegisters implements Request{
            conn = new Connection("192.168.1.200", 502);
            
            Data rxData = new Data(new byte[8]);
-           ReadHoldingRegisters rwreq = new ReadHoldingRegisters(new DataBlock(0,10,FunctionCode.READINPUTREGISTERS, FunctionCode.UNDEFINED, new Iec61131Address("%IW0")));
+           ReadHoldingRegisters rwreq = new ReadHoldingRegisters(new DataBlock(0,10,FunctionCode.READINPUTREGISTERS, FunctionCode.UNDEFINED, new Iec61131Address("IW0")));
            long startTime;
            long stopTime;
            for (int i = 0; i < 10000; i++){
@@ -141,8 +138,7 @@ public class ReadHoldingRegisters implements Request{
                 rwreq.read(conn);
                 //txData.setBIT(0, 0, i % 2 == 0);
                 //txData.setBIT(1, 0, i % 2 == 1);
-                stopTime = System.nanoTime();
-                System.out.println(rxData.getBIT(1, 7) + " duration: " + (stopTime - startTime));
+                System.out.println("rwreq data : " + rwreq.getData());
            }
            System.out.println(conn);
            conn.close();

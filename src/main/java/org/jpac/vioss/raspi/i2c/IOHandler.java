@@ -84,7 +84,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     }
     
     @Override
-    public boolean handles(URI uri) {
+    public boolean handles(URI uri, IoDirection ioDirection) {
         boolean isHandledByThisInstance = false;
         try{
             isHandledByThisInstance  = uri != null;

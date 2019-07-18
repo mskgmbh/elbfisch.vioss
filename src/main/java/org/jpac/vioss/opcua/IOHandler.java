@@ -44,13 +44,12 @@ import java.net.InetAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.HashMap;
 import java.util.concurrent.ExecutionException;
-import org.jpac.Address;
 import org.jpac.AsynchronousTask;
 import org.jpac.InconsistencyException;
+import org.jpac.IoDirection;
 import org.jpac.JPac;
 import org.jpac.Module;
 import org.jpac.ProcessException;
@@ -437,7 +436,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     }    
     
     @Override
-    public boolean handles(URI uri) {
+    public boolean handles(URI uri, IoDirection ioDirection) {
         boolean isHandledByThisInstance = false;
         try{
             isHandledByThisInstance  = uri != null;

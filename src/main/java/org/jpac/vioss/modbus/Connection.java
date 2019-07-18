@@ -86,7 +86,7 @@ public class Connection{
     public synchronized void initialize() throws IOException {
         InetAddress addr = InetAddress.getByName(host);
         // create a tcp/ip socket for basic connectivity
-        socket = new Socket(addr, Modbus.DEFAULT_PORT);
+        socket = new Socket(addr, port);
         try {
           socket.setSoTimeout(Modbus.DEFAULT_TIMEOUT);
         } catch (IOException ex) {

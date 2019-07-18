@@ -127,7 +127,7 @@ public class WriteMultipleRegisters implements Request{
        try{
            conn = new Connection("192.168.1.200", 502);
            
-           DataBlock db = new DataBlock(0,2, FunctionCode.UNDEFINED, FunctionCode.WRITEMULTIPLEREGISTERS, new Iec61131Address("%QW0"));   
+           DataBlock db = new DataBlock(0,2, FunctionCode.UNDEFINED, FunctionCode.WRITEMULTIPLEREGISTERS, new Iec61131Address("QW0"));   
            WriteMultipleRegisters wreq = new WriteMultipleRegisters(db);
            long startTime;
            long stopTime;

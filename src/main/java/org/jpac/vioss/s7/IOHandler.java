@@ -23,15 +23,12 @@
  * along with the jPac If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.jpac.vioss.modbus;
+package org.jpac.vioss.s7;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.UnknownHostException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.StringTokenizer;
 
 import org.jpac.Signal;
@@ -40,17 +37,19 @@ import org.jpac.Module;
 import org.jpac.SignedIntegerValue;
 import org.jpac.Timer;
 import org.jpac.vioss.IoSignal;
-import org.jpac.vioss.modbus.Iec61131Address.AccessMode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.apache.commons.configuration.SubnodeConfiguration;
-import org.apache.commons.configuration.HierarchicalConfiguration;
 import org.jpac.AsynchronousTask;
 import org.jpac.InconsistencyException;
 import org.jpac.IoDirection;
+import org.jpac.Logical;
 import org.jpac.NumberOutOfRangeException;
 import org.jpac.ProcessException;
 import org.jpac.SignalAccessException;
 import org.jpac.WrongUseException;
 import org.jpac.plc.AddressException;
+import org.jpac.plc.LobRxTx;
 import org.jpac.plc.ValueOutOfRangeException;
 import org.jpac.vioss.IllegalUriException;
 
@@ -59,38 +58,34 @@ import org.jpac.vioss.IllegalUriException;
  * @author berndschuster
  */
 public class IOHandler extends org.jpac.vioss.IOHandler{
-	//static Logger Log = LoggerFactory.getLogger("jpac.vioss.modbus");
+	static Logger Log = LoggerFactory.getLogger("jpac.vioss.s7");
 	
-    private final static String  HANDLEDSCHEME     = "MODBUS";
-    private final static String  DATABLOCK	       = "datablock";
-    private final static String  ADDRESS           = "[@address]";
-    private final static String  SIZE              = "[@size]";
-    private final static String  IEC61131ADDRESS   = "[@iec61131Address]";
-    private final static String  READFUNCTIONCODE  = "[@ReadFuncionCode]";
-    private final static String  WRITEFUNCTIONCODE = "[@WriteFuncionCode]";
-    private final static String  NA                = "NA";
-
+    private final static String  HANDLEDSCHEME     = "S7";
     
     private final static int     CONNECTIONRETRYTIME    = 1000;               //ms  
     private final static long    INPUTOUTPUTTIMEOUTTIME = 100 * Module.millis;//ms 
 
+
     public enum State            {IDLE, CONNECTING, TRANSCEIVING, CLOSINGCONNECTION, STOPPED};  
     
-    private State                      state;
-    private Connection                 connection;
-    private ConnectionRunner           connectionRunner;
-    private InputOutputRunner          inputOutputRunner;
-    private boolean                    connected;
-    private boolean                    connecting;
-    private String                     host;
-    private int                        port;
+    private State             state;
+    private Connection        connection;
+    private ConnectionRunner  connectionRunner;
+    private InputOutputRunner inputOutputRunner;
     
-    private HashMap<Iec61131Address, DataBlock> datablocks;
-    private DataBlock                           assignedReadDataBlock;
-    private DataBlock                           assignedWriteDataBlock;
-    private Request                             readRequest;
-    private Request                             writeRequest;
-    private String                              deviceIdentifier;
+    private boolean           connected;
+    private boolean           connecting;
+    private String            host;
+    private int               rack;
+    private int               slot;
+    private LobRxTx			  readCommand;
+    private LobRxTx			  writeCommand;
+    private int               readAddress;
+    private int               readSize;
+    private int               readDatablock;
+    private int               writeAddress;
+    private int               writeSize;
+    private int               writeDatablock;
 
     public IOHandler(URI uri, SubnodeConfiguration parameterConfiguration) throws IllegalUriException, WrongUseException, InvalidAddressSpecifierException{
         super(uri, parameterConfiguration);
@@ -98,105 +93,21 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
             throw new IllegalUriException("scheme '" + uri.getScheme() + "' not handled by " + toString());
         }
         this.host = uri.getHost();
-        this.port = uri.getPort() != -1 ? uri.getPort() : Modbus.DEFAULT_PORT;
 
         StringTokenizer pathTokens = new StringTokenizer(uri.getPath(),"/");
-        if (pathTokens.countTokens() != 2) {
+        if (pathTokens.countTokens() != 4) {
         	throw new InvalidAddressSpecifierException("Error: uri must contain both a device identifier and an IEC 61131 address specifier: " + uri.getPath());
         }
-        deviceIdentifier           = pathTokens.nextToken();
-        String iecAddressSpecifier = pathTokens.nextToken();
-        
-        HierarchicalConfiguration deviceConfiguration = getParameterConfiguration().configurationAt(deviceIdentifier);
-        List<HierarchicalConfiguration> datablockConfigurations = deviceConfiguration.configurationsAt(DATABLOCK);
-        if (datablockConfigurations == null || datablockConfigurations.isEmpty()) {
-        	throw new WrongUseException("Error: no datablocks defined for modbus device. Remote instance: " + uri);
+        try {
+	        rack = Integer.decode(pathTokens.nextToken());
+	        slot = Integer.decode(pathTokens.nextToken());
+        } catch(NumberFormatException exc) {
+        	throw new InvalidAddressSpecifierException("Error: rack/slot/db specifiers must be decimal numbers (/<rack>/slot/<datablock>/<IEC61131 address>):" + uri.getPath());        	
         }
-        //retrieve data block definitions for modbus device
-        datablocks = new HashMap<>();
-        datablockConfigurations.forEach((hc) -> {
-        	try {
-	            int             address           = hc.getInt(ADDRESS);
-	            int             size              = hc.getInt(SIZE);
-	            String          readFC            = hc.getString(READFUNCTIONCODE).toUpperCase();
-	            String          writeFC           = hc.getString(WRITEFUNCTIONCODE).toUpperCase();
-	            FunctionCode    readFunctionCode  = readFC.equals(NA) ? FunctionCode.UNDEFINED : FunctionCode.fromInt(Integer.decode(readFC));
-	            FunctionCode    writeFunctionCode = writeFC.equals(NA) ? FunctionCode.UNDEFINED : FunctionCode.fromInt(Integer.decode(writeFC));
-	            Iec61131Address iec61131Address   = new Iec61131Address(hc.getString(IEC61131ADDRESS));
-	            DataBlock       db = null;
-	            try {
-	            	db = new DataBlock(address, size, readFunctionCode, writeFunctionCode, iec61131Address);
-		            datablocks.put(iec61131Address, db);
-		            Log.debug("datablock defined: " + datablocks.get(iec61131Address));
-	            } catch(WrongUseException exc) {
-	            	Log.error("Error in configuration for modbus device '" + deviceIdentifier + "': " + exc.getMessage());
-	            }
-        	} catch(Exception exc) {
-        		Log.error("Error: ",exc);
-        	}
-        });
-        Iec61131Address iecAddress = new Iec61131Address(iecAddressSpecifier);
-        DataBlock assignedDataBlock = retrieveDataBlock(iecAddress);
-        if (assignedDataBlock == null) {
-        	throw new InvalidAddressSpecifierException("Error: Modbus device does not contain any datablock assignable to " + uri.getPath());
-        }
-        
-        switch (assignedDataBlock.getIec61131Address().getAccessMode()){
-        	case INPUT : 
-        		assignedReadDataBlock  = assignedDataBlock;
-        	    break;
-        	case OUTPUT: 
-        		assignedWriteDataBlock = assignedDataBlock;
-        		break;
-        	case MEMORY: 
-        		assignedReadDataBlock  = assignedDataBlock;
-        		assignedWriteDataBlock = assignedDataBlock;
-        		break;
-        	default:
-        }
-        
-        this.connectionRunner  = new ConnectionRunner(this + " connection runner");
-        this.inputOutputRunner = new InputOutputRunner(this + " input/output runner");
-        this.state             = State.IDLE;
+        this.connectionRunner = new ConnectionRunner(this + " connection runner");
+        this.state            = State.IDLE;
     }
     
-    protected DataBlock retrieveDataBlock(Iec61131Address iecAddress) {
-        //find data block defined in org.jpac.Configuration which is to be accessed by this io handler
-    	DataBlock datablock = null;
-    	try {
-    		datablock = datablocks.values().stream().filter((db) -> db.contains(iecAddress)).findFirst().get();
-    	} catch(NoSuchElementException exc) {
-    		datablock = null;
-    	}
-        return datablock;
-    }
-    
-    protected Request getReadRequest() {
-    	return readRequest;
-    }
-    
-    protected Request getWriteRequest() {
-    	return writeRequest;
-    }
-
-    protected Request getReadRequestFromFunctionCode(DataBlock db) {
-    	switch (db.getReadFunctionCode()) {
-    		case READCOILS             : return new ReadCoils(db); 
-    		case READDISCRETEINPUTS    : return new ReadDiscreteInputs(db);
-    		case READHOLDINGREGISTERS  : return new ReadHoldingRegisters(db);
-    		case READINPUTREGISTERS    : return new ReadInputRegisters(db);
-    		default                    : return null;
-    	}    			
-    }
-
-    protected Request getWriteRequestFromFunctionCode(DataBlock db) {
-    	switch (db.getWriteFunctionCode()) {
-    		case WRITEMULTIPLECOILS    : return new WriteMultipleCoils(db);
-    		case WRITEMULTIPLEREGISTERS: return new WriteMultipleRegisters(db);
-    		default                    : return null;
-    	}    			
-    }
-
     @Override
     public void run(){
         try{
@@ -221,7 +132,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
                 case TRANSCEIVING:
                     try{
                         if(!transceiving()){
-                           throw new IOException("at least one signal could not properly be transferred.");
+                           throw new IOException("at least one ads signal could not properly be transferred.");
                         }
                     }
                     catch(IOException exc){
@@ -258,24 +169,51 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     
     @Override
     public void prepare() {
+    	int minReadIndex  = Integer.MAX_VALUE;
+    	int maxReadIndex  = Integer.MIN_VALUE;
+    	int minWriteIndex = Integer.MAX_VALUE;
+    	int maxWriteIndex = Integer.MIN_VALUE;
+    	int dataByteIndex, dataSize;
+    	
         try{
             Log.info("starting up " + this);
-            //prepare read and write requests
-            if (assignedReadDataBlock != null) {
-            	readRequest  = getReadRequestFromFunctionCode(assignedReadDataBlock);
-            }
-            if (assignedWriteDataBlock != null) {
-            	writeRequest = getWriteRequestFromFunctionCode(assignedWriteDataBlock);
-            }
-            //assign RemoteSignalInfos to io signals
+            //assign RemoteSignalInfos and calculate data areas both for input and output.
             for (Signal is: getInputSignals()){
             	IoSignal ioSig = (IoSignal)is;
-            	ioSig.setRemoteSignalInfo(new RemoteSignalInfo(is, assignedReadDataBlock));
+            	RemoteSignalInfo rsi = new RemoteSignalInfo(is);
+            	dataByteIndex        = rsi.getIec61131Address().getDataByteIndex();
+            	dataSize	         = rsi.getIec61131Address().getDataSize();
+            	if (dataByteIndex < minReadIndex) minReadIndex =  dataByteIndex;
+            	if (dataByteIndex + dataSize > maxReadIndex) maxReadIndex = dataByteIndex + dataSize;            	
+            	ioSig.setRemoteSignalInfo(new RemoteSignalInfo(is));
             }
             for (Signal os: getOutputSignals()){
             	IoSignal ioSig = (IoSignal)os;
-            	ioSig.setRemoteSignalInfo(new RemoteSignalInfo(os, assignedWriteDataBlock));
-            }                   
+            	RemoteSignalInfo rsi = new RemoteSignalInfo(os);
+            	dataByteIndex = rsi.getIec61131Address().getDataByteIndex();
+            	dataSize	  = rsi.getIec61131Address().getDataSize();
+            	if (dataByteIndex < minWriteIndex) minWriteIndex = dataByteIndex;
+            	if (dataByteIndex + dataSize > maxWriteIndex) maxWriteIndex = dataByteIndex + dataSize;            	
+            	ioSig.setRemoteSignalInfo(new RemoteSignalInfo(os));
+            }            
+            //seize read and write db from the first signal each input and output
+            readDatablock  = getInputSignals().size()  != 0 ? ((RemoteSignalInfo)((IoSignal)getInputSignals().get(0)).getRemoteSignalInfo()).getDb()  : -1;
+            writeDatablock = getOutputSignals().size() != 0 ? ((RemoteSignalInfo)((IoSignal)getOutputSignals().get(0)).getRemoteSignalInfo()).getDb() : -1;
+            if ((readDatablock != -1 && writeDatablock != -1) && (readDatablock == writeDatablock)) {
+               //both input and output directions are involved and the datablock is the same for both input and output direction
+               //check if data ranges overlap
+               if (((maxReadIndex  >= minWriteIndex) && (maxReadIndex  <= maxWriteIndex)) ||
+            	   ((minReadIndex  >= minWriteIndex) && (minReadIndex  <= maxWriteIndex)) || 
+            	   ((maxWriteIndex >= minReadIndex)  && (maxWriteIndex <= maxReadIndex))  ||
+            	   ((minWriteIndex >= minReadIndex)  && (minWriteIndex <= maxReadIndex)))    {
+            	   Log.warn(this +": WARNING: input and output data ranges overlap ! Output operations will perhaps unintentionally overwrite data items written by the plc");
+               }
+            }
+            readAddress = minReadIndex;
+            readSize    = maxReadIndex - minReadIndex + 1;
+            writeAddress = minReadIndex;
+            writeSize    = maxReadIndex - minReadIndex + 1;
+            
             setProcessingStarted(true);        
         }
         catch(Exception exc){
@@ -344,9 +282,6 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
         return done;
     };
     
-    /**
-     * is called in every cycle while in state TRANSCEIVING
-     */
     protected boolean transceiving() throws IOException, WrongUseException, SignalAccessException, AddressException, NumberOutOfRangeException{
         boolean  allSignalsProperlyTransferred = true;
         try {
@@ -354,10 +289,10 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
 	        	throw new IOException("Failed to transceive process image");
 	        }
 	        if (inputOutputRunner.timedOut()) {
-	        	throw new IOException("transception of process image timed out");
+	        	throw new IOException("transceptiion of process image timed out");
 	        }
 	        //put out output signals
-	        if (inputOutputRunner.isFinished() && assignedWriteDataBlock != null){
+	        if (inputOutputRunner.isFinished() && !getOutputSignals().isEmpty()){
 	            for(Signal ios: getOutputSignals()){
 	                if (((IoSignal)ios).isToBePutOut()){
 	                	((IoSignal)ios).resetToBePutOut();
@@ -369,7 +304,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
 	            }
 	        }
 	        //read input signals
-	        if (inputOutputRunner.isFinished() && assignedReadDataBlock != null){
+	        if (inputOutputRunner.isFinished() && !getInputSignals().isEmpty()){
 	            //propagate input signals
 	            for(Signal ios: getInputSignals()){
 	            	//get signal value from process image ...
@@ -378,7 +313,6 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
 	            	((IoSignal)ios).checkIn();
 	            }
 	        }
-	        //invoke exchange of the process image with remote device asynchronously
 	        inputOutputRunner.start();
         } catch(Exception exc) {
         	Log.error("Error: ", exc);
@@ -404,66 +338,55 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     };
 
     protected void checkInSignal(IoSignal ioSignal) {
-    	boolean            boolVal;
-    	int                intVal;
+    	boolean          boolVal;
+    	int              intVal;
+    	RemoteSignalInfo rsi = (RemoteSignalInfo)(ioSignal).getRemoteSignalInfo();
     	try {
-        	RemoteSignalInfo   rsi = (org.jpac.vioss.modbus.RemoteSignalInfo)(ioSignal).getRemoteSignalInfo();
         	switch(rsi.getIec61131Address().type) {
 		    	case BIT:
-		    		boolVal   = readRequest.getData().getBIT(rsi.getDataByteIndex(), rsi.getDataBitIndex());
-		            ((LogicalValue)rsi.getValue()).set(boolVal);
-		            ((LogicalValue)rsi.getValue()).setValid(true);
+		    		boolVal = readCommand.getData().getBIT(rsi.getIec61131Address().getDataByteIndex(), rsi.getIec61131Address().getDataBitIndex());
+		            ((LogicalValue)ioSignal.getRemoteSignalInfo().getValue()).set(boolVal);
 		    		break;
 		    	case BYTE:
-		    		intVal = readRequest.getData().getBYTE(rsi.getDataByteIndex());
-		            ((SignedIntegerValue)rsi.getValue()).set(intVal);
-		            ((SignedIntegerValue)rsi.getValue()).setValid(true);
-		            break;
+		    		intVal = readCommand.getData().getBYTE(rsi.getIec61131Address().getDataByteIndex());
+		            ((SignedIntegerValue)ioSignal.getRemoteSignalInfo().getValue()).set(intVal);
+		    		break;
 		    	case WORD:
-		    		intVal = readRequest.getData().getWORD(rsi.getDataByteIndex());
-		    		((SignedIntegerValue)rsi.getValue()).set(intVal);
-		            ((SignedIntegerValue)rsi.getValue()).setValid(true);
+		    		intVal = readCommand.getData().getWORD(rsi.getIec61131Address().getDataByteIndex());
+		    		((SignedIntegerValue)ioSignal.getRemoteSignalInfo().getValue()).set(intVal);
 		    		break;		    		
 		    	case DWORD:
-		    		intVal = (int)readRequest.getData().getDWORD(rsi.getDataByteIndex());
-		    		((SignedIntegerValue)rsi.getValue()).set(intVal);
-		            ((SignedIntegerValue)rsi.getValue()).setValid(true);
+		    		intVal = (int)readCommand.getData().getDWORD(rsi.getIec61131Address().getDataByteIndex());
+		    		((SignedIntegerValue)ioSignal.getRemoteSignalInfo().getValue()).set(intVal);
 		    		break;
 		    	default:
-		    		throw new WrongUseException("signal type " + rsi.getType() + " currently not implemented for ADS protocol");	   
+		    		throw new WrongUseException("signal type " + ((RemoteSignalInfo)ioSignal.getRemoteSignalInfo()).getType() + " currently not implemented for ADS protocol");	   
         	}
     	}
     	catch(AddressException exc) {/*cannot happen*/}
     }
     
     protected void checkoutSignal(IoSignal ioSignal) {
-    	LogicalValue       boolValue;
-    	SignedIntegerValue intValue;
-    	boolean            boolVal;
-    	int                intVal;
-    	RemoteSignalInfo   rsi = (org.jpac.vioss.modbus.RemoteSignalInfo)(ioSignal).getRemoteSignalInfo();
-
+    	boolean          boolVal;
+    	int              intVal;
+    	RemoteSignalInfo rsi = (RemoteSignalInfo)(ioSignal).getRemoteSignalInfo();
     	try {
         	switch(rsi.getIec61131Address().type) {
 		    	case BIT:
-		    		boolValue = (LogicalValue)rsi.getValue();
-		    		boolVal   = boolValue.isValid() ? boolValue.get() : false;
-		            writeRequest.getData().setBIT(rsi.getDataByteIndex(), rsi.getDataBitIndex(), boolVal);
+		    		boolVal = ((LogicalValue)ioSignal.getRemoteSignalInfo().getValue()).get();
+		            writeCommand.getData().setBIT(rsi.getIec61131Address().getDataByteIndex(), rsi.getIec61131Address().getDataBitIndex(), boolVal);
 		    		break;
 		    	case BYTE:
-		    		intValue = (SignedIntegerValue)rsi.getValue();
-		    		intVal   = intValue.isValid() ? intValue.get() : 0;
-		            writeRequest.getData().setBYTE(rsi.getDataByteIndex(), intVal);
+		    		intVal  = ((SignedIntegerValue)ioSignal.getRemoteSignalInfo().getValue()).get();
+		            writeCommand.getData().setBYTE(rsi.getIec61131Address().getDataByteIndex(), intVal);
 		    		break;
 		    	case WORD:
-		    		intValue = (SignedIntegerValue)rsi.getValue();
-		    		intVal   = intValue.isValid() ? intValue.get() : 0;
-		            writeRequest.getData().setWORD(rsi.getDataByteIndex(), intVal);
+		    		intVal  = ((SignedIntegerValue)ioSignal.getRemoteSignalInfo().getValue()).get();
+		            writeCommand.getData().setWORD(rsi.getIec61131Address().getDataByteIndex(), intVal);
 		            break;		    		
 		    	case DWORD:
-		    		intValue = (SignedIntegerValue)rsi.getValue();
-		    		intVal   = intValue.isValid() ? intValue.get() : 0;
-		            writeRequest.getData().setDWORD(rsi.getDataByteIndex(), intVal);
+		    		intVal  = ((SignedIntegerValue)ioSignal.getRemoteSignalInfo().getValue()).get();
+		            writeCommand.getData().setDWORD(rsi.getIec61131Address().getDataByteIndex(), intVal);
 		    		break;
 		    	default:
 		    		throw new WrongUseException("signal type " + ((RemoteSignalInfo)ioSignal.getRemoteSignalInfo()).getType() + " currently not implemented for ADS protocol");	   
@@ -483,6 +406,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     @Override
     public boolean handles(URI uri, IoDirection ioDirection) {
         boolean isHandledByThisInstance = false;
+        int rack,slot,db;
         try{
             isHandledByThisInstance  = uri != null;
             isHandledByThisInstance &= this.getUri().getScheme().equals(uri.getScheme());
@@ -493,46 +417,20 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
             if (isHandledByThisInstance) {
 	            try {
 	                StringTokenizer pathTokens = new StringTokenizer(uri.getPath(),"/");
-	                if (pathTokens.countTokens() != 2) {
+	                if (pathTokens.countTokens() != 4) {
 	                	throw new InvalidAddressSpecifierException("Error: uri must contain both a device identifier and an IEC 61131 address specifier: " + uri.getPath());
 	                }
-	                String deviceIdentifier    = pathTokens.nextToken();
+	                try {
+	        	        rack = Integer.decode(pathTokens.nextToken());
+	        	        slot = Integer.decode(pathTokens.nextToken());
+	        	        db   = Integer.decode(pathTokens.nextToken());
+	                } catch(NumberFormatException exc) {
+	                	throw new InvalidAddressSpecifierException("Error: rack/slot/db specifiers must be decimal numbers (/<rack>/slot/<datablock>/<IEC61131 address>):" + uri.getPath());        	
+	                }
 	                String iecAddressSpecifier = pathTokens.nextToken();
-	            	isHandledByThisInstance   &= this.deviceIdentifier.equals(deviceIdentifier);
-	            	
-	            	Iec61131Address iecadr     = new Iec61131Address(iecAddressSpecifier);
-	            	switch(iecadr.getAccessMode()) {
-	            		case INPUT:
-	                    	if (assignedReadDataBlock != null) {
-	                    		//data block for input already defined by the constructor
-	                    		//check, if it contains the given iec address
-	                    		isHandledByThisInstance = assignedReadDataBlock.contains(iecadr);
-	                    	} else {
-	                    		//input data block not assigned for this io handler. Assign it now
-	                    		assignedReadDataBlock = retrieveDataBlock(iecadr);
-	                    		//and declare, that this uri will be handled by this io handler
-	                    		isHandledByThisInstance = true;
-	                    	}
-	            			break;
-	            		case OUTPUT:
-	                    	if (assignedWriteDataBlock != null) {
-	                    		//data block for output already defined by the constructor
-	                    		//check, if it contains the given iec address
-	                    		isHandledByThisInstance = assignedWriteDataBlock.contains(iecadr);
-	                    	} else {
-	                    		//output data block not assigned for this io handler. Assign it now
-	                    		assignedWriteDataBlock = retrieveDataBlock(iecadr);
-	                    		//and declare, that this uri will be handled by this io handler
-	                    		isHandledByThisInstance = true;
-	                    	}
-	            			break;
-	            		case MEMORY:
-	            			isHandledByThisInstance = (assignedReadDataBlock.getIec61131Address().getAccessMode() == AccessMode.MEMORY) && 
-	            									  assignedReadDataBlock.contains(iecadr);
-	            			break;
-	            		default:
-	            			isHandledByThisInstance = false;
-	            	}
+	            	isHandledByThisInstance   &= this.rack == rack;
+	            	isHandledByThisInstance   &= this.slot == slot;
+	            	isHandledByThisInstance   &= isSuitableForDatablock(db, ioDirection);
 	            } catch(InvalidAddressSpecifierException exc) {
 	            	isHandledByThisInstance = false;
 	            }
@@ -540,6 +438,38 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
         }
         catch(UnknownHostException exc){};
         return isHandledByThisInstance;
+    }
+    
+    protected boolean isSuitableForDatablock(int db, IoDirection ioDirection) {
+    	boolean isSuitable = true;
+    	try{
+    	    boolean isSuitableAsInput  = getInputSignals().size()  == 0 || getInputSignals().stream().allMatch((s)-> db == seizeDatablock(s));
+    	    boolean isSuitableAsOutput = getOutputSignals().size() == 0 || getOutputSignals().stream().allMatch((s)-> db == seizeDatablock(s));
+
+    	    switch(ioDirection) {
+		    	case INPUT:
+		    		isSuitable = isSuitableAsInput;
+		    		break;
+		    	case OUTPUT:
+		    		isSuitable = isSuitableAsOutput;
+		    		break;
+		    	case INOUT:
+		    		isSuitable = isSuitableAsInput && isSuitableAsOutput;
+		    		break;
+	    	}
+    	} catch(Exception exc) {
+    		Log.error("Error: ", exc);
+    		isSuitable = false;
+    	}
+    	return isSuitable;
+    }
+    
+    protected int seizeDatablock(Signal signal) {
+    	int db = 0;
+        StringTokenizer pathTokens = new StringTokenizer(((IoSignal)signal).getUri().getPath(),"/");
+	    Integer.decode(pathTokens.nextToken());
+	    Integer.decode(pathTokens.nextToken());
+    	return Integer.decode(pathTokens.nextToken());
     }
     
     @Override
@@ -555,10 +485,9 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     @Override
     public String getTargetInstance(){
     	String ti = getUri().getScheme();
-    	ti = ti + "://" + host + ":" + port + "/" + this.deviceIdentifier;
+    	ti = ti + "://" + host + "/" + rack + "/" + slot;
         return ti;
     }
-
     
     class ConnectionRunner extends AsynchronousTask{ 
         private Connection           connection;
@@ -572,21 +501,14 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
             boolean   exceptionOccured = false;
             
             connected = false;
-            String readAddress  = "";
-            String writeAddress = "";
-            if (assignedReadDataBlock != null) {
-            	readAddress = assignedReadDataBlock.iec61131Address.getAddressSpecifier();
-            }
-            if (assignedWriteDataBlock != null) {
-            	writeAddress = assignedWriteDataBlock.iec61131Address.getAddressSpecifier();
-            }
-            Log.info("establishing connection for " + getInputSignals().size() + " input (" + readAddress + ") and " + 
-                                                      getOutputSignals().size() + " output (" + writeAddress + ") signals ...");
+            Log.info("establishing connection for " + getInputSignals().size() + " input and " +  getOutputSignals().size() + " output signals ...");
             do{
                 try{
                 	//establish connection
-                    connection = new Connection(getUri().getHost(), getUri().getPort() != -1 ? getUri().getPort() : Modbus.DEFAULT_PORT);
-                    connected  = true;
+                    connection   = new Connection(host, rack, slot);
+                    connected    = true;
+                    readCommand  = new LobRxTx(connection, new Address(readDatablock , readAddress , readSize , Address.NA), 0, new Data(new byte[readSize]));
+                    writeCommand = new LobRxTx(connection, new Address(writeDatablock, writeAddress, writeSize, Address.NA), 0, new Data(new byte[writeSize]));
                 } catch(Exception exc){
                     Log.debug("Error:", exc);
                     try{Thread.sleep(CONNECTIONRETRYTIME);}catch(InterruptedException ex){/*cannot happen*/};
@@ -606,8 +528,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
         public boolean isConnectionEstablished(){
             return connected;
         }
-    }    
-
+    } 
     class InputOutputRunner extends AsynchronousTask{ 
         private boolean errorOccured;
         private Timer   watchDog;
@@ -627,17 +548,13 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
         @Override
         public void doIt() throws ProcessException {
             try {
-                //Log.debug("invoking exchange of process image ...");
-                if (writeRequest != null) {
-		            writeRequest.write(connection);//request
-		            writeRequest.read(connection); //acknowledgement
-                }
-                if (readRequest != null) {
-		            readRequest.write(connection); //request
-		            readRequest.read(connection);  //acknowledgement
-                }
+                Log.debug("invoking exchange of process image ...");
+                writeCommand.getWriteRequest().write(connection);//request
+                writeCommand.getWriteRequest().read(connection); //acknowledgement
+                readCommand.getWriteRequest().write(connection); //request
+	            readCommand.getReadRequest().read(connection);   //acknowledgement
 	            errorOccured = false;
-	            //Log.debug("exchange of process image succeeded");
+	            Log.debug("exchange of process image succeeded");
             } catch(Exception exc) {
             	Log.error("Error:", exc);
                 errorOccured = true;
@@ -656,4 +573,5 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
         	errorOccured = false;
         }
     }    
+    
 }

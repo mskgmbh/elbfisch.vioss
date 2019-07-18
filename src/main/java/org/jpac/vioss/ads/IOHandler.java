@@ -37,6 +37,7 @@ import org.jpac.vioss.IoSignal;
 import org.apache.commons.configuration.SubnodeConfiguration;
 import org.jpac.AsynchronousTask;
 import org.jpac.InconsistencyException;
+import org.jpac.IoDirection;
 import org.jpac.NumberOutOfRangeException;
 import org.jpac.ProcessException;
 import org.jpac.SignalAccessException;
@@ -427,7 +428,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     }
     
     @Override
-    public boolean handles(URI uri) {
+    public boolean handles(URI uri, IoDirection ioDirection) {
         boolean isHandledByThisInstance = false;
         try{
             isHandledByThisInstance  = uri != null;
