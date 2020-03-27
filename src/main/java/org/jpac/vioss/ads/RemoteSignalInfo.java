@@ -36,7 +36,9 @@ import org.jpac.vioss.IoSignal;
  * @author berndschuster
  */
 public class RemoteSignalInfo extends org.jpac.vioss.RemoteSignalInfo{
-    
+	private final int    DEFAULTSIZE   = 4;
+	private final String PARAMETERSIZE = "size";
+	
     private Signal  ioSignal;
     
     private AdsGetSymbolHandleByName adsGetSymbolHandleByName;
@@ -45,24 +47,33 @@ public class RemoteSignalInfo extends org.jpac.vioss.RemoteSignalInfo{
     private AdsReleaseHandle         adsReleaseHandle;
     private AdsErrorCode             adsErrorCode;
     
+    private Integer				     size;
+    
 //    private Long                     handle;
 
     public RemoteSignalInfo(Signal ioSignal){
     	super(ioSignal.getIdentifier(), BasicSignalType.fromSignal(ioSignal));
     	this.ioSignal  = ioSignal;
+    	getSize();//compute size [byte] of the corresponding plc variable
     }    
     
-    private int getSize() {
-    	int size = 0;
-    	switch (getType()) {
-    	case Logical:
-    		size = 1;
-    		break;
-    	case SignedInteger:
-    		size = 4;
-    		break;	
-    	default:
-    		throw new NotImplementedException("CharString not implemented for ADS");
+    protected int getSize() {
+    	if (size == null) {
+	    	switch (getType()) {
+	    	case Logical:
+	    		size = 1;
+	    		break;
+	    	case SignedInteger:
+	    		size = (((IoSignal)ioSignal).getParameters().get("size") == null) ? DEFAULTSIZE : Integer.parseInt(((IoSignal)ioSignal).getParameters().get(PARAMETERSIZE));
+	    		if (size != 1 && size != 2 && size != 4) throw new IllegalArgumentException("size of a SignedInteger must be 1,2 or 4: " + ioSignal);
+	    		break;	
+	    	case CharString:
+	    		size = (((IoSignal)ioSignal).getParameters().get("size") == null) ? DEFAULTSIZE : Integer.parseInt(((IoSignal)ioSignal).getParameters().get(PARAMETERSIZE));
+	    		if (size < 1 ) throw new IllegalArgumentException("size of a CharString must be  > 1 : " + ioSignal);
+	    		break;	
+	    	default:
+	    		throw new NotImplementedException(getType() + " not implemented for ADS");
+	    	}
     	}
     	return size;
     }

@@ -80,23 +80,24 @@ public class RemoteSignalInfo extends org.jpac.vioss.RemoteSignalInfo {
 		
         StringTokenizer tokenizer = new StringTokenizer(ios.getPath(), "/");
         try{//URI: "pi.i2c:/<bus>/<device>/<datasize>/<byte address>[/<bit address>][?endianess=bigendian | littleendian]"
-            i2cBusIndex = parseIntAsDecOrHex(tokenizer.nextToken());
+            i2cBusIndex = Integer.decode(tokenizer.nextToken());
             if (i2cBusIndex < 0 || i2cBusIndex > 17){
                 throw new WrongUseException("illegal i2c bus specified in '" + ios.getPath() + "'. Must be 0.. 17 (dec)");
             }
-            i2cDeviceAddress  = parseIntAsDecOrHex(tokenizer.nextToken()) & 0xFF;//take 1 unsigned byte as the device address
+            i2cDeviceAddress  = Integer.decode(tokenizer.nextToken()) & 0xFF;//take 1 unsigned byte as the device address
             String dataSizeToken = tokenizer.nextToken();
             if (dataSizeToken.trim().equals(NOTAPPLICABLE)) {
             	dataSize = Address.NA;
             } else {
-                dataSize = parseIntAsDecOrHex(dataSizeToken) & 0xFF;//take 1 unsigned byte as data size            	
+                dataSize = Integer.decode(dataSizeToken) & 0xFF;//take 1 unsigned byte as data size            	
                 if (dataSize < 1 || dataSize > 4){
                     throw new WrongUseException("illegal data size specified in '" + ios.getPath() + "'. Must be 1..4 [byte]");
                 }
             }
-            dataByteAddress = parseIntAsDecOrHex(tokenizer.nextToken()) & 0xFF;//take 1 unsigned byte as the byte address            	
+            //TODO !!!!!! implement NA for direct access
+            dataByteAddress = Integer.decode(tokenizer.nextToken()) & 0xFF;//take 1 unsigned byte as the byte address            	
             if (type.equals(BasicSignalType.Logical)) {
-            	dataBitAddress = parseIntAsDecOrHex(tokenizer.nextToken()) & 0xFF;//take 1 unsigned byte as the bit address
+            	dataBitAddress = Integer.decode(tokenizer.nextToken()) & 0xFF;//take 1 unsigned byte as the bit address
                 if (dataBitAddress > 8 || dataSize != Address.NA){
                     throw new WrongUseException("illegal address specified in '" + ios.getPath() + "'. data size must be 'na' and bit address must be 1..8 ");
                 }
@@ -111,48 +112,37 @@ public class RemoteSignalInfo extends org.jpac.vioss.RemoteSignalInfo {
             } else {
             	this.endianness = Data.Endianness.BIGENDIAN;
             }
+	        address   = new Address(dataByteAddress, type == BasicSignalType.Logical ? dataBitAddress : Address.NA, dataSize);
         	if (((IOHandler)ios.getIOHandler()).isRunningOnRaspi()) {
 		        i2cBus    = I2CFactory.getInstance(i2cBusIndex);    
 		        i2cDevice = i2cBus.getDevice(i2cDeviceAddress);
+		        if (!((IOHandler)ios.getIOHandler()).getBusses().containsKey(i2cBusIndex)) {
+		        	((IOHandler)ios.getIOHandler()).getBusses().put(i2cBusIndex, new Bus(i2cBus));
+		        } 
+		        if (!((IOHandler)ios.getIOHandler()).getBusses().get(i2cBusIndex).getDevices().containsKey(i2cDeviceAddress)) {
+		        	((IOHandler)ios.getIOHandler()).getBusses().get(i2cBusIndex).getDevices().put(i2cDeviceAddress, new Device(i2cDevice, endianness));
+		        }
+		        device = ((IOHandler)ios.getIOHandler()).getBusses().get(i2cBusIndex).getDevices().get(i2cDeviceAddress);
+		        
+		        switch (ios.getIoDirection()) {
+		        	case INPUT:
+		        		((IOHandler)ios.getIOHandler()).getBusses().get(i2cBusIndex).getDevices().get(i2cDeviceAddress).addToReadAddressRange(address);
+		        		break;
+		        	case OUTPUT:
+		        		((IOHandler)ios.getIOHandler()).getBusses().get(i2cBusIndex).getDevices().get(i2cDeviceAddress).addToWriteAddressRange(address);
+		        		break;
+		        	case INOUT:
+		        		((IOHandler)ios.getIOHandler()).getBusses().get(i2cBusIndex).getDevices().get(i2cDeviceAddress).addToReadAddressRange(address);
+		        		((IOHandler)ios.getIOHandler()).getBusses().get(i2cBusIndex).getDevices().get(i2cDeviceAddress).addToWriteAddressRange(address);
+		        	default:
+		        }
         	} else {
         		i2cBus    = null;
         		i2cDevice = null;
         	}
-	        address   = new Address(dataByteAddress, type == BasicSignalType.Logical ? dataBitAddress : Address.NA, dataSize);
-	        if (!((IOHandler)ios.getIOHandler()).getBusses().containsKey(i2cBusIndex)) {
-	        	((IOHandler)ios.getIOHandler()).getBusses().put(i2cBusIndex, new Bus(i2cBus));
-	        } 
-	        if (!((IOHandler)ios.getIOHandler()).getBusses().get(i2cBusIndex).getDevices().containsKey(i2cDeviceAddress)) {
-	        	((IOHandler)ios.getIOHandler()).getBusses().get(i2cBusIndex).getDevices().put(i2cDeviceAddress, new Device(i2cDevice, endianness));
-	        }
-	        device = ((IOHandler)ios.getIOHandler()).getBusses().get(i2cBusIndex).getDevices().get(i2cDeviceAddress);
-	        
-	        switch (ios.getIoDirection()) {
-	        	case INPUT:
-	        		((IOHandler)ios.getIOHandler()).getBusses().get(i2cBusIndex).getDevices().get(i2cDeviceAddress).addToReadAddressRange(address);
-	        		break;
-	        	case OUTPUT:
-	        		((IOHandler)ios.getIOHandler()).getBusses().get(i2cBusIndex).getDevices().get(i2cDeviceAddress).addToWriteAddressRange(address);
-	        		break;
-	        	case INOUT:
-	        		((IOHandler)ios.getIOHandler()).getBusses().get(i2cBusIndex).getDevices().get(i2cDeviceAddress).addToReadAddressRange(address);
-	        		((IOHandler)ios.getIOHandler()).getBusses().get(i2cBusIndex).getDevices().get(i2cDeviceAddress).addToWriteAddressRange(address);
-	        	default:
-	        }
         } catch(UnsupportedBusNumberException | IOException | WrongUseException exc) {
             throw new InconsistencyException("illegal address specification in '" + ios.getUri() + "' : " + exc);        	
         } 
-	}
-	
-	public int parseIntAsDecOrHex(String intStr) throws NumberFormatException{
-		Integer value = null;
-		//test, if value is decimal
-		try {value = Integer.parseInt(intStr, 10);}catch(NumberFormatException exc) {};
-		if (value == null) {
-			//if not, try if its hex
-			value = Integer.parseInt(intStr, 16);			
-		}
-		return value;
 	}
 	
 	public void pushValueToDevice() {

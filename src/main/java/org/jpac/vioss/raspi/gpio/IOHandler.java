@@ -104,7 +104,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
             //abort processing of this io handler
             setProcessingAborted(true);
         }
-    }
+    }        
 
     @Override
     public boolean isFinished() {

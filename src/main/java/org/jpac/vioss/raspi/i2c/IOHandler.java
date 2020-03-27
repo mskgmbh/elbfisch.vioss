@@ -49,9 +49,9 @@ import org.jpac.vioss.IoSignedInteger;
  * "pi.i2c:/<bus>/<device>/<datasize>/<byte address>[/<bit address>][?endianess=bigendian | littleendian]
  *  Path:
  *   bus         : on raspi always '1'
- *   device      : 7-bit address of the device (can be given decimal or hexadecimal notation)
+ *   device      : 7-bit address of the device (can be given in decimal or hexadecimal notation: 112 == 0x70)
  *   datasize    : number of bytes comprised by the data item to be accessed. Possible values 1,2,4. 'na' for bit access
- *   byte address: address of the register or of the low byte of a data item to be accessed
+ *   byte address: address of the register or of the low byte of a data item to be accessed. 'na' for direct access (device has only 1 data item)
  *   bit address : optinal: number of a bit (0..7) to be accessed by an IoLogical
  *  
  *  Parameters:
@@ -144,7 +144,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
             //abort processing of this io handler
             setProcessingAborted(true);
         }
-    }
+    }          
 
     @Override
     public boolean isFinished() {

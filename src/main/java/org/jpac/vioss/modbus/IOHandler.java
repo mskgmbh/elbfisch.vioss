@@ -254,7 +254,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
                 }                
             }
         }
-    }
+    }          
     
     @Override
     public void prepare() {
@@ -430,7 +430,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
 		            ((SignedIntegerValue)rsi.getValue()).setValid(true);
 		    		break;
 		    	default:
-		    		throw new WrongUseException("signal type " + rsi.getType() + " currently not implemented for ADS protocol");	   
+		    		throw new WrongUseException("signal type " + rsi.getType() + " currently not implemented for MODBUS protocol");	   
         	}
     	}
     	catch(AddressException exc) {/*cannot happen*/}

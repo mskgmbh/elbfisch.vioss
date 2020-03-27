@@ -36,6 +36,8 @@ import org.jpac.SignedIntegerValue;
 import org.jpac.vioss.IoSignal;
 import org.apache.commons.configuration.SubnodeConfiguration;
 import org.jpac.AsynchronousTask;
+import org.jpac.CharStringValue;
+import org.jpac.DecimalValue;
 import org.jpac.InconsistencyException;
 import org.jpac.IoDirection;
 import org.jpac.NumberOutOfRangeException;
@@ -46,6 +48,8 @@ import org.jpac.WrongUseException;
 import org.jpac.plc.AddressException;
 import org.jpac.plc.ValueOutOfRangeException;
 import org.jpac.vioss.IllegalUriException;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 
 /**
  *
@@ -143,7 +147,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
                 }                
             }
         }
-    }
+    }   
     
     @Override
     public void prepare() {
@@ -342,10 +346,12 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     
     
     protected void checkInSignal(IoSignal ioSignal) {
-    	org.jpac.vioss.ads.RemoteSignalInfo rsi  = (org.jpac.vioss.ads.RemoteSignalInfo)(ioSignal).getRemoteSignalInfo();
-    	AdsReadVariableByHandle             rvbh = rsi.getAdsReadVariableByHandle();
-        AdsErrorCode                adsErrorCode = rvbh.getAdsResponse().getErrorCode();
-        AdsErrorCode            lastAdsErrorCode = ((org.jpac.vioss.ads.RemoteSignalInfo)(ioSignal).getRemoteSignalInfo()).getErrorCode();
+    	int                                 intVal       = 0;
+    	double                              decimalValue = 0.0;
+    	org.jpac.vioss.ads.RemoteSignalInfo rsi          = (org.jpac.vioss.ads.RemoteSignalInfo)(ioSignal).getRemoteSignalInfo();
+    	AdsReadVariableByHandle             rvbh         = rsi.getAdsReadVariableByHandle();
+        AdsErrorCode                adsErrorCode         = rvbh.getAdsResponse().getErrorCode();
+        AdsErrorCode            lastAdsErrorCode         = ((org.jpac.vioss.ads.RemoteSignalInfo)(ioSignal).getRemoteSignalInfo()).getErrorCode();
         if (adsErrorCode == AdsErrorCode.NoError){
         	try {
 	        	switch(((RemoteSignalInfo)ioSignal.getRemoteSignalInfo()).getType()) {
@@ -354,13 +360,34 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
 			            ((LogicalValue)ioSignal.getRemoteSignalInfo().getValue()).set(boolVal);
 			    		break;
 			    	case SignedInteger:
-			    		int intVal = rvbh.getAdsResponse().getData().getDINT(0); 
+			    		switch(rsi.getSize()) {
+			    			case 1:
+			    				int byteVal = rvbh.getAdsResponse().getData().getBYTE(0); 
+					    		intVal = byteVal <= 127 ? byteVal : byteVal - 256; //return signed value -128 .. 127
+			    				break;
+			    			case 2:
+					    		intVal = rvbh.getAdsResponse().getData().getINT(0); 
+			    				break;
+			    			case 4:
+					    		intVal = rvbh.getAdsResponse().getData().getDINT(0); 
+			    				break;
+			    		}
 			            ((SignedIntegerValue)ioSignal.getRemoteSignalInfo().getValue()).set(intVal);
 			    		break;
 			    	case Decimal:
-			    		throw new WrongUseException("Decimal currently not implemented for ADS protocol");
+			    		switch(rsi.getSize()) {
+			    			case 4:
+			    			    decimalValue = (double)(ByteBuffer.wrap(rvbh.getAdsResponse().getData().getBytes()).getFloat());
+			    				break;
+			    			case 8:
+			    			    decimalValue = ByteBuffer.wrap(rvbh.getAdsResponse().getData().getBytes()).getDouble();
+			    				break;
+			    		}
+			            ((DecimalValue)ioSignal.getRemoteSignalInfo().getValue()).set(decimalValue);
 			    	case CharString:
-			    		throw new WrongUseException("CharString currently not implemented for ADS protocol");
+			    		String str = new String(rvbh.getAdsResponse().getData().getBytes(), StandardCharsets.US_ASCII);
+			            ((CharStringValue)ioSignal.getRemoteSignalInfo().getValue()).set(str);
+			    		break;
 			    	default:
 			    		throw new WrongUseException("signal type " + ((RemoteSignalInfo)ioSignal.getRemoteSignalInfo()).getType() + " currently not implemented for ADS protocol");	   
 	        	}
@@ -404,11 +431,30 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
 		    		break;
 		    	case SignedInteger:
 		            wvbh.getData().setDINT(0, rsi.getValue().isValid() ? ((SignedIntegerValue)rsi.getValue()).get() : 0); 
+		    		switch(rsi.getSize()) {
+	    			case 1:
+			            wvbh.getData().setBYTE(0, rsi.getValue().isValid() ? ((SignedIntegerValue)rsi.getValue()).get() : 0); 
+	    				break;
+	    			case 2:
+			            wvbh.getData().setINT(0, rsi.getValue().isValid() ? ((SignedIntegerValue)rsi.getValue()).get() : 0); 
+	    				break;
+	    			case 4:
+			            wvbh.getData().setDINT(0, rsi.getValue().isValid() ? ((SignedIntegerValue)rsi.getValue()).get() : 0); 
+	    				break;
+	    		}
 		    		break;
 		    	case Decimal:
-		    		throw new WrongUseException("Decimal currently not implemented for ADS protocol");
+		    		switch(rsi.getSize()) {
+	    			case 4:
+	    				wvbh.getData().setDINT(0, Float.floatToIntBits(rsi.getValue().isValid() ? (float)((DecimalValue)rsi.getValue()).get() : 0.0f));
+	    				break;
+	    			case 8:
+	    				wvbh.getData().setLINT(0,Double.doubleToLongBits(rsi.getValue().isValid() ? ((DecimalValue)rsi.getValue()).get() : 0.0));
+	    				break;
+		    		}
 		    	case CharString:
-		    		throw new WrongUseException("CharString currently not implemented for ADS protocol");
+		    		wvbh.getData().setBytes((rsi.getValue().isValid() ? ((CharStringValue)rsi.getValue()).get() : "").getBytes(StandardCharsets.US_ASCII));
+		    		break;
 		    	default:
 		    		throw new WrongUseException("signal type " + ((RemoteSignalInfo)ioSignal.getRemoteSignalInfo()).getType() + " currently not implemented for ADS protocol");	   
         	}

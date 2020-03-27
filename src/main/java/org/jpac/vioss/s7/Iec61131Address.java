@@ -9,10 +9,8 @@ public class Iec61131Address {
 	protected AccessMode accessMode;  
 	protected Type       type;        
 	protected int        bitAddress;  
-	protected int        address;
-	protected int        dataByteIndex;//byte index in org.jpac.plc.Data
-	protected int        dataBitIndex; //bit index in org.jpac.plc.Data
-	protected int        dataSize;     //size of the data item [byte]
+	protected int        byteAddress;
+	protected int        size;     //size of the data item [byte]
 	
 	public Iec61131Address() {
 		this.accessMode  = accessMode.UNDEFINED;
@@ -57,9 +55,9 @@ public class Iec61131Address {
 		}
 		i++;
 		for (; i < as.length() && as.charAt(i) == ' ';i++);//skip blanks
-		address = 0;
+		byteAddress = 0;
 		while (i < as.length() && as.charAt(i) >= '0' && as.charAt(i) <= '9') {
-			address = 10 * address + as.charAt(i) - '0';
+			byteAddress = 10 * byteAddress + as.charAt(i) - '0';
 			i++;
 		}
 		for (; i < as.length() && as.charAt(i) == ' ';i++);//skip blanks
@@ -86,27 +84,18 @@ public class Iec61131Address {
 			}			
 		}
 
-		//provide data byte and bit index for accessing org.jpac.plc.Data
-		//considering the byte order of the modbus protocol being big endian 
 		switch(type) {
 			case BIT:
-				dataByteIndex = address;//address is byte address
-				dataBitIndex  = bitAddress;
-				dataSize      = 1;
+				size = 1;
 				break;
 			case BYTE:
-				dataSize      = 1;
-				dataByteIndex = address;//address is byte address
-				dataBitIndex  = 0;
+				size = 1;
 				break;
 			case WORD:
-				dataSize      = 2;
-				dataByteIndex = address;//address is byte address
-				dataBitIndex  = 0;
+				size = 2;
+				break;
 			case DWORD:
-				dataSize      = 4;
-				dataByteIndex = address;//address is byte address
-				dataBitIndex  = 0;
+				size = 4;
 				break;
 			default:
 				//cannot happen
@@ -118,24 +107,16 @@ public class Iec61131Address {
 		return accessMode;
 	}
 	
-	public int getAddress() {
-		return address;
+	public int getByteAddress() {
+		return byteAddress;
 	}
 	
 	public int getBitAddress() {
 		return bitAddress;
 	}
 	
-	public int getDataByteIndex() {
-		return this.dataByteIndex;
-	}
-
-	public int getDataBitIndex() {
-		return this.dataBitIndex;
-	}
-	
-	public int getDataSize() {
-		return this.dataSize;
+	public int getSize() {
+		return this.size;
 	}
 
 	public String getAddressSpecifier() {
@@ -143,7 +124,7 @@ public class Iec61131Address {
 	}
 	
 	public String toString() {
-		return getClass().getSimpleName() + "(" + accessMode + ", " + type + ", " + address + ", " + bitAddress + ", " + dataByteIndex + ", " + dataBitIndex + ")";
+		return getClass().getSimpleName() + "(" + accessMode + ", " + type + ", " + byteAddress + ", " + bitAddress + ")";
 	}
 
     public static void main(String[] args){

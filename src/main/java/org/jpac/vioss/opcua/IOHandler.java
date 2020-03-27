@@ -97,8 +97,6 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     private ArrayList<NodeId>     writeNodeIds;
     private List<StatusCode>      returnedStatusCodes;
     private ArrayList<NodeId>     checkServerStatusId;
- 
-    private HashMap<IoSignal, NodeId> nodeIds;
     
     private UaSubscription        subscription;  
     
@@ -121,7 +119,6 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
         this.endpointUrlExtension  = buildEndpointUrlExtension(uri);
         this.checkServerStatusId   = new ArrayList<>();
         this.checkServerStatusId.add(Identifiers.Server_ServerStatus_State);
-        this.nodeIds               = new HashMap<>();
     }
 
     @Override
@@ -177,7 +174,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
                 }                
             }
         }
-    }
+    }        
     
     @Override
     public void prepare() {

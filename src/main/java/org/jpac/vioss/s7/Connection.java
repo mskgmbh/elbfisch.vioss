@@ -29,10 +29,8 @@ import java.io.*;
 import org.jpac.IndexOutOfRangeException;
 import org.jpac.plc.Address;
 import org.jpac.plc.Data;
-import org.jpac.plc.ReadRequest;
 import org.jpac.plc.Request;
 import org.jpac.plc.ValueOutOfRangeException;
-import org.jpac.plc.WriteRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -260,14 +258,12 @@ public class Connection extends org.jpac.plc.Connection{
     }
     
     public ReadRequest generateReadRequest(Request.DATATYPE datatype, Address address, int dataOffset, Data data) throws ValueOutOfRangeException, IndexOutOfRangeException{
- //TOOD       return new ReadRequest(datatype, address, dataOffset, data);
-    	return null;//TODO
+    	return new ReadRequest(datatype, address, dataOffset, data);
     }
 
 
     public WriteRequest generateWriteRequest(Request.DATATYPE datatype, Address address, int dataOffset, Data data) throws ValueOutOfRangeException, IndexOutOfRangeException{
-//TODO        return new org.jpac.plc.s7.WriteRequest(datatype, address, dataOffset, data);
-    	return null;//TODO
+        return new WriteRequest(datatype, address, dataOffset, data);
     }
     
     @Override

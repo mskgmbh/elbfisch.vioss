@@ -47,11 +47,13 @@ class Device {
 			for (int i = 0; i <  writeDataBuffer.length; i++) {
 				if (writeDataBuffer[i] != shadowWriteDataBuffer[i]) {
 					//write byte only, if changed to avoid side effects
-					i2cDevice.write(i + startOfWriteAddressRange, writeDataBuffer[i]);
+//TODO					i2cDevice.write(i + startOfWriteAddressRange, writeDataBuffer[i]);
+//					i2cDevice.write(writeDataBuffer[i]);
 					shadowWriteDataBuffer[i] = writeDataBuffer[i];
 				}
 			}
-			i2cDevice.read(startOfReadAddressRange, readDataBuffer, 0, readDataBuffer.length);
+//TODO			i2cDevice.read(startOfReadAddressRange, readDataBuffer, 0, readDataBuffer.length);
+			readDataBuffer[0] = (byte)i2cDevice.read();
 		} else {
 			//application is not run on an raspberry pi
 			//copy write data to read data inside overlapping address range for simulation purposes 
