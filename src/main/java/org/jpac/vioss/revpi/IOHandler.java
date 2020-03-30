@@ -35,6 +35,7 @@ import java.util.StringTokenizer;
 
 import org.apache.commons.configuration.SubnodeConfiguration;
 import org.jpac.Address;
+import org.jpac.BasicSignalType;
 import org.jpac.InconsistencyException;
 import org.jpac.IoDirection;
 import org.jpac.Signal;
@@ -87,9 +88,10 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     public void prepare(){
         setProcessingStarted(true);
         Log.info("starting up " + this + (this.runningOnRevPi ? "" : " (simulated)"));
-        try{
-        	getInputSignals().forEach((s) -> ((RemoteSignalInfo)((IoSignal)s).getRemoteSignalInfo()).setProcessImageItem(seizeProcessImageItem(s))); 
-        	getOutputSignals().forEach((s) -> ((RemoteSignalInfo)((IoSignal)s).getRemoteSignalInfo()).setProcessImageItem(seizeProcessImageItem(s))); 
+        
+        try{//String identifier, BasicSignalType type, ProcessImageItem processImageItem
+        	getInputSignals().forEach((s) -> ((IoSignal)s).setRemoteSignalInfo(new RemoteSignalInfo(s.getQualifiedIdentifier(), BasicSignalType.fromSignal(s), seizeProcessImageItem(s)))); 
+        	getOutputSignals().forEach((s) -> ((IoSignal)s).setRemoteSignalInfo(new RemoteSignalInfo(s.getQualifiedIdentifier(), BasicSignalType.fromSignal(s), seizeProcessImageItem(s))));
         }
         catch(Exception exc){
             Log.error("Error:", exc);
@@ -139,7 +141,6 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     
     protected void transceiveProcessImage() {
         try{
-            //get actual input process image from peripherals
             //check for changes of output signals
             for (Signal s: getOutputSignals()) {
             	IoSignal ioSig = (IoSignal)s;
@@ -153,7 +154,6 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
             	transferValueFromProcessImage(ioSig);
             	ioSig.checkIn();
             }
-            //prepare output image to be transferred to the peripherals
         }
         catch(Exception | Error exc){
             Log.error("Error: ", exc);
@@ -195,18 +195,18 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     	ProcessImageItem pii = rsi.getProcessImageItem();
     	switch(ioSig.getRemoteSignalInfo().getType()) {
 	    	case Logical:
-	    			pii.getData().setBIT(pii.getAddress().getByteIndex(),pii.getAddress().getBitIndex(), ((LogicalValue)rsi.getValue()).get());
+	    			pii.getData().setBIT(pii.getAddress().getByteIndex(),pii.getAddress().getBitIndex(), rsi.getValue().isValid() ? ((LogicalValue)rsi.getValue()).get() : false);
 	    			break;
 	    	case SignedInteger:
 		            switch(pii.getAddress().getSize()){
 	                case 1:
-	                	pii.getData().setBYTE(pii.getAddress().getByteIndex(), ((SignedIntegerValue)rsi.getValue()).get());
+	                	pii.getData().setBYTE(pii.getAddress().getByteIndex(), rsi.getValue().isValid() ? ((SignedIntegerValue)rsi.getValue()).get() : 0);
 	                    break;
 	                case 2:
-	                	pii.getData().setINT(pii.getAddress().getByteIndex(), ((SignedIntegerValue)rsi.getValue()).get());
+	                	pii.getData().setINT(pii.getAddress().getByteIndex(), rsi.getValue().isValid() ? ((SignedIntegerValue)rsi.getValue()).get() : 0);
 	                    break;
 	                case 4:
-	                	pii.getData().setDINT(pii.getAddress().getByteIndex(), ((SignedIntegerValue)rsi.getValue()).get());
+	                	pii.getData().setDINT(pii.getAddress().getByteIndex(), rsi.getValue().isValid() ? ((SignedIntegerValue)rsi.getValue()).get() : 0);
 	                    break;
 		            }
 	    			break;
@@ -219,20 +219,24 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     	ProcessImageItem pii = rsi.getProcessImageItem();
     	switch(ioSig.getRemoteSignalInfo().getType()) {
 	    	case Logical:
-	    			((LogicalValue)rsi.getValue()).set(pii.getData().getBIT(pii.getAddress().getByteIndex(),pii.getAddress().getBitIndex()));
+	    			LogicalValue logicalValue = (LogicalValue)rsi.getValue();
+	    			logicalValue.set(pii.getData().getBIT(pii.getAddress().getByteIndex(),pii.getAddress().getBitIndex()));
+	    			logicalValue.setValid(true);
 	    			break;
 	    	case SignedInteger:
+	    			SignedIntegerValue signedIntegerValue = (SignedIntegerValue)rsi.getValue();
 		            switch(pii.getAddress().getSize()){
 	                case 1:
-	                	((SignedIntegerValue)rsi.getValue()).set(pii.getData().getBYTE(pii.getAddress().getByteIndex()));
+	                	signedIntegerValue.set(pii.getData().getBYTE(pii.getAddress().getByteIndex()));
 	                    break;
 	                case 2:
-	                	((SignedIntegerValue)rsi.getValue()).set(pii.getData().getINT(pii.getAddress().getByteIndex()));
+	                	signedIntegerValue.set(pii.getData().getINT(pii.getAddress().getByteIndex()));
 	                    break;
 	                case 4:
-	                	((SignedIntegerValue)rsi.getValue()).set(pii.getData().getDINT(pii.getAddress().getByteIndex()));
+	                	signedIntegerValue.set(pii.getData().getDINT(pii.getAddress().getByteIndex()));
 	                    break;
 		            }
+                	signedIntegerValue.setValid(true);
 	    			break;
 	    		default:
     	}
