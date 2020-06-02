@@ -39,7 +39,7 @@ public class RemoteSignalInfo extends org.jpac.vioss.RemoteSignalInfo{
     
     private Signal          ioSignal;
     private int             rack, slot, db;   
-    private Iec61131Address iec61131Address;
+    private DatablockAddress iec61131Address;
 
     public RemoteSignalInfo(Signal ioSignal){
     	super(ioSignal.getIdentifier(), BasicSignalType.fromSignal(ioSignal));
@@ -52,7 +52,7 @@ public class RemoteSignalInfo extends org.jpac.vioss.RemoteSignalInfo{
             this.rack            = Integer.parseInt(pathTokens.nextToken());
             this.slot            = Integer.parseInt(pathTokens.nextToken());
             this.db              = Integer.parseInt(pathTokens.nextToken());
-    		this.iec61131Address = new Iec61131Address(pathTokens.nextToken());    				
+    		this.iec61131Address = new DatablockAddress(pathTokens.nextToken());    				
     	} catch(Exception exc) {
     		Log.error("Error:", exc);
     	}
@@ -70,7 +70,7 @@ public class RemoteSignalInfo extends org.jpac.vioss.RemoteSignalInfo{
     	return this.db;
     }
     
-    public Iec61131Address getIec61131Address() {
+    public DatablockAddress getIec61131Address() {
     	return this.iec61131Address;
     }
 }

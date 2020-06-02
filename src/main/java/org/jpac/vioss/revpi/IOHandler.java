@@ -1,5 +1,5 @@
 /**
- * PROJECT   : Elbfisch - versatile input output subsystem (vioss) for the Revolution Pi
+ * PROJECT   : Elbfisch - versatile input output subsystem (vioss) for the Revolution Pi 
  * MODULE    : IOHandler.java
  * VERSION   : -
  * DATE      : -
@@ -63,6 +63,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     protected RandomAccessFile piControl;
     protected ProcessImage     processImage;
     protected boolean          runningOnRevPi;
+    //TEST
                 
     public IOHandler(URI uri, SubnodeConfiguration parameterConfiguration) throws IllegalUriException, IOException {
         super(uri, parameterConfiguration);
@@ -231,6 +232,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
 	                    break;
 	                case 2:
 	                	signedIntegerValue.set(pii.getData().getINT(pii.getAddress().getByteIndex()));
+	                	//System.out.println(ioSig + " : " + pii.getData().getINT(pii.getAddress().getByteIndex()));//TODO
 	                    break;
 	                case 4:
 	                	signedIntegerValue.set(pii.getData().getDINT(pii.getAddress().getByteIndex()));

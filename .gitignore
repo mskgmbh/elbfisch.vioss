@@ -1,1 +1,8 @@
+/.settings/
 /target/
+/lib/
+.DS_Store
+/.classpath
+/.gitignore
+/.project
+
