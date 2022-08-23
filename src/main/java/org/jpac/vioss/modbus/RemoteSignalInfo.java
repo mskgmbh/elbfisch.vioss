@@ -42,8 +42,8 @@ public class RemoteSignalInfo extends org.jpac.vioss.RemoteSignalInfo{
     private Signal          ioSignal;
     private DataBlock       assignedDataBlock;
     private Iec61131Address iec61131Address;
-	private int             dataByteIndex;//byte index in org.jpac.plc.Data
-	private int             dataBitIndex; //bit index in org.jpac.plc.Data    
+    private int             dataByteIndex;//byte index in org.jpac.plc.Data
+    private int             dataBitIndex; //bit index in org.jpac.plc.Data    
 
     public RemoteSignalInfo(Signal ioSignal, DataBlock assignedDataBlock){
     	super(ioSignal.getIdentifier(), BasicSignalType.fromSignal(ioSignal));
@@ -73,14 +73,11 @@ public class RemoteSignalInfo extends org.jpac.vioss.RemoteSignalInfo{
 			case BIT:
 				dataByteIndex = 2 * (iec61131Address.getAddress() - assignedDataBlock.getIec61131Address().getAddress());//address is word address.
 				dataBitIndex  = iec61131Address.getBitAddress();
-				if (registerAccess) {
-					//consider big endianness
-					if (dataBitIndex > 7) {
-						dataBitIndex -= 8;
-					} else {
-						dataByteIndex++;
-					}
-				}
+                                if (dataBitIndex > 7) {
+                                        dataBitIndex -= 8;
+                                } else {
+                                        dataByteIndex++;
+                                }
 				break;
 			case BYTE:
 				dataByteIndex = iec61131Address.getAddress()/*[byte]*/ - 2 * assignedDataBlock.getIec61131Address().getAddress()/*[word]*/; 
@@ -103,7 +100,7 @@ public class RemoteSignalInfo extends org.jpac.vioss.RemoteSignalInfo{
 				//cannot happen
 				break;
 		}
-		Log.debug(ioSignal + " assigned to " + assignedDataBlock + " dataByteIndex = " + dataByteIndex + " databitIndex = " + dataBitIndex);
+		Log.debug(ioSignal + " assigned to " + assignedDataBlock + " dataByteIndex = " + dataByteIndex + " databitIndex = " + dataBitIndex + ")");
     }
     
     public Iec61131Address getIec61131Address() {

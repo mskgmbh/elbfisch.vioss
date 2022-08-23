@@ -72,7 +72,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
 
     
     private final static int     CONNECTIONRETRYTIME    = 1000;               //ms  
-    private final static long    INPUTOUTPUTTIMEOUTTIME = 100 * Module.millis;//ms 
+    private final static long    INPUTOUTPUTTIMEOUTTIME = 500 * Module.millis;//ms 
 
     public enum State            {IDLE, CONNECTING, TRANSCEIVING, CLOSINGCONNECTION, STOPPED};  
     
@@ -351,7 +351,8 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
         boolean  allSignalsProperlyTransferred = true;
         try {
 	        if (inputOutputRunner.errorOccured()) {
-	        	throw new IOException("Failed to transceive process image");
+                    inputOutputRunner.resetError();//BS
+                    throw new IOException("Failed to transceive process image");
 	        }
 	        if (inputOutputRunner.timedOut()) {
 	        	throw new IOException("transception of process image timed out");
@@ -378,8 +379,10 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
 	            	((IoSignal)ios).checkIn();
 	            }
 	        }
-	        //invoke exchange of the process image with remote device asynchronously
-	        inputOutputRunner.start();
+	        //invoke exchange of the process image with remote device asynchronously as soon as the last exchange is done
+                if(inputOutputRunner.isFinished()){//BS
+                    inputOutputRunner.start();
+                }
         } catch(Exception exc) {
         	Log.error("Error: ", exc);
         	allSignalsProperlyTransferred = false;

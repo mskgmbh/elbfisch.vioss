@@ -61,7 +61,7 @@ public class Modbus {
    * default setting for I/O operation timeouts
    * in milliseconds
    */
-  public static final int DEFAULT_TIMEOUT = 10;
+  public static final int DEFAULT_TIMEOUT = 1000;
 
   /**
    * default amount of retires for opening

@@ -94,7 +94,7 @@ public class Connection{
         }
         // prepare streams here
         in  = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
-        out = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));            
+        out = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));                  
     }
 
     public synchronized void setSoTimeout(int timeout) throws IOException {

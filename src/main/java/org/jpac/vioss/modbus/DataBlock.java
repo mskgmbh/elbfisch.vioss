@@ -37,8 +37,8 @@ import org.jpac.vioss.modbus.Iec61131Address.AccessMode;
  */
 
 public class DataBlock {
-        protected int             address;			 //address of the data block inside the modbus device [word]
-        protected int             size;				 //size [word]
+        protected int             address;           //address of the data block inside the modbus device [byte] //BS 4.8.22 changed from [word] to [byte] 
+        protected int             size;              //size [byte]
         protected FunctionCode    readFunctionCode;  //block read command for accessing the data block
         protected FunctionCode    writeFunctionCode; //block write command for accessing the data block
         protected Iec61131Address iec61131Address;   //IEC61131 address of this data block (1st word)
@@ -54,20 +54,23 @@ public class DataBlock {
             if (size > 256) {
             	throw new WrongUseException("Error: modbus datablock size must not exceed 256 words");
             }
-            if (readFunctionCode != FunctionCode.UNDEFINED && iec61131Address.accessMode == AccessMode.OUTPUT) {
-            	throw new WrongUseException("read function code cannot be applied to output datablock: " + iec61131Address.getAddressSpecifier());
-            }
-            if (writeFunctionCode != FunctionCode.UNDEFINED && iec61131Address.accessMode == AccessMode.INPUT) {
-            	throw new WrongUseException("Write function code cannot be applied to input datablock: " + iec61131Address.getAddressSpecifier());
-            }
-            if (readFunctionCode != FunctionCode.UNDEFINED && !readFunctionCode.isReadFunctionBlock()) {
-            	throw new WrongUseException("applied readFunctionCode must be a read FC for " + iec61131Address.getAddressSpecifier());
-            }
+            if (readFunctionCode != FunctionCode.UNDEFINED || writeFunctionCode != FunctionCode.UNDEFINED || iec61131Address != null){
+                //DataBlock used in modbus client context
+                if (readFunctionCode != FunctionCode.UNDEFINED && iec61131Address.accessMode == AccessMode.OUTPUT) {
+                    throw new WrongUseException("read function code cannot be applied to output datablock: " + iec61131Address.getAddressSpecifier());
+                }
+                if (writeFunctionCode != FunctionCode.UNDEFINED && iec61131Address.accessMode == AccessMode.INPUT) {
+                    throw new WrongUseException("Write function code cannot be applied to input datablock: " + iec61131Address.getAddressSpecifier());
+                }
+                if (readFunctionCode != FunctionCode.UNDEFINED && !readFunctionCode.isReadFunctionBlock()) {
+                    throw new WrongUseException("applied readFunctionCode must be a read FC for " + iec61131Address.getAddressSpecifier());
+                }
 
-            if (writeFunctionCode != FunctionCode.UNDEFINED && !writeFunctionCode.isWriteFunctionBlock()) {
-            	throw new WrongUseException("applied writeFunctionCode must be a write FC for "+ iec61131Address.getAddressSpecifier());
+                if (writeFunctionCode != FunctionCode.UNDEFINED && !writeFunctionCode.isWriteFunctionBlock()) {
+                    throw new WrongUseException("applied writeFunctionCode must be a write FC for "+ iec61131Address.getAddressSpecifier());
+                }
             }
-            this.data = new Data(new byte[2 * this.size]);            
+            this.data = new Data(new byte[this.size]);            
         }
 
 		public int getAddress() {
@@ -94,12 +97,25 @@ public class DataBlock {
 			return iec61131Address;
 		}  
 		
-		public boolean contains(Iec61131Address iec61131Address) {
-			boolean contained = false;
-			contained  = this.iec61131Address.accessMode == iec61131Address.accessMode   &&
-			             this.iec61131Address.getAddress() <= iec61131Address.getAddress() &&
-			             this.iec61131Address.getAddress() + this.size > (iec61131Address.getType() != Iec61131Address.Type.BYTE ? iec61131Address.getAddress()/*[word]*/ : iec61131Address.getAddress()/2/*[byte]*/);
-			return contained;
+		public boolean contains(Iec61131Address targetAddress) {
+                    //check access mode
+                    boolean contained  = iec61131Address.getAccessMode() == targetAddress.accessMode;
+                    int factor = 0;
+                    switch(targetAddress.getType()){
+                        case BYTE:
+                            factor = 1;
+                            break;
+                        case WORD:
+                            factor = 2;
+                            break;
+                        case DWORD:
+                            factor = 4;
+                            break;
+                    }
+                    //check if the data item fits into the datablock
+                    int targetByteAddress = factor * targetAddress.getAddress();
+                    contained = contained && iec61131Address.getAddress() <= targetByteAddress && iec61131Address.getAddress() + this.size > targetByteAddress;
+                    return contained;
 		}	
 		
 		@Override

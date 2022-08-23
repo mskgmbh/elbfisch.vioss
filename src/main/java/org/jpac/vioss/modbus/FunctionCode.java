@@ -26,14 +26,14 @@
 
 package org.jpac.vioss.modbus;
 
-import org.jpac.WrongUseException;
+import io.netty.buffer.ByteBuf;
 
 /**
  * modbus function codes implemented in this package
  * @author berndschuster
  */
 public enum FunctionCode {
-	UNDEFINED             (0x00),
+    UNDEFINED             (0x00),
     READCOILS             (0x01),
     READDISCRETEINPUTS    (0x02),
     READHOLDINGREGISTERS  (0x03),
@@ -78,5 +78,9 @@ public enum FunctionCode {
     		default:
     			return UNDEFINED;
     	}
+    }
+    
+    public void encode(ByteBuf byteBuf, boolean error){
+        byteBuf.writeByte(error ? 0x80 + this.fc : this.fc);
     }
 }

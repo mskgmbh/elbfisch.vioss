@@ -16,12 +16,19 @@ public class Iec61131Address {
 		this.type        = type.UNDEFINED;
 	}
 
-	public Iec61131Address(String addressSpecifier) throws InvalidAddressSpecifierException {
+	public Iec61131Address(int address, int size, AccessMode accessMode, Type type) throws InvalidAddressSpecifierException {
+		this();
+		this.addressSpecifier = addressSpecifier.trim().toUpperCase();
+		computeAddress(this.addressSpecifier);
+	}
+
+        public Iec61131Address(String addressSpecifier) throws InvalidAddressSpecifierException {
 		this();
 		this.addressSpecifier = addressSpecifier.trim().toUpperCase();
 		computeAddress(this.addressSpecifier);
 	}
 	
+        @SuppressWarnings("empty-statement")
 	protected void computeAddress(String as) throws InvalidAddressSpecifierException {
 		int i = 0;
 		for (; i < as.length() && as.charAt(i) == ' ';i++);//skip blanks
