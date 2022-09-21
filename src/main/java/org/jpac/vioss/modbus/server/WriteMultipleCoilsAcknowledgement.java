@@ -44,7 +44,6 @@ public class WriteMultipleCoilsAcknowledgement extends Acknowledgement{
     public void encode(ByteBuf byteBuf){
         super.encode(byteBuf);
         if (this.exceptionCode == ExceptionCode.NONE){
-            super.encode(byteBuf);
             byteBuf.writeShort(address);
             byteBuf.writeShort(size);
         }

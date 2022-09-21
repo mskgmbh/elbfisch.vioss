@@ -65,7 +65,7 @@ public class ReadCoils implements Request{
     } 
 
     protected void readData(Connection conn) throws IOException {
-        int numberOfBytes = 2 * dataBlock.getSize();
+        int numberOfBytes = dataBlock.getSize();                                      // TODO: ULB: changed due to datablock change from word to byte base
         try{
             for (int i = 0; i < numberOfBytes; i++){
             	getData().setBYTE(i, (int)conn.getInputStream().readByte() & 0x000000FF);
@@ -83,7 +83,7 @@ public class ReadCoils implements Request{
         conn.getOutputStream().writeByte((byte)UNITIDENTIFIER);                    //unit identifier (not used)        
         conn.getOutputStream().writeByte((byte)FunctionCode.READCOILS.getValue()); //function code
         conn.getOutputStream().writeShort((short)dataBlock.getAddress());          //address of the first coil
-        conn.getOutputStream().writeShort((short)16 * dataBlock.getSize());        //number of coils
+        conn.getOutputStream().writeShort((short)8 * dataBlock.getSize());         //number of coils                        // TODO: ULB: changed due to datablock change from word to byte base
     }
     
     protected void readResponseHeader(Connection conn) throws IOException{
@@ -106,7 +106,7 @@ public class ReadCoils implements Request{
             throw new IOException("exception received from modbus device over connection " + conn + " : function code = " + Integer.toHexString(functionCode) + " exception code = " + exceptionCode);            
         }          
         int byteCount     = (int)conn.getInputStream().readByte();
-        if (byteCount != 2 * dataBlock.getSize()){
+        if (byteCount != dataBlock.getSize()){ // TODO: ULB: changed due to datablock change from word to byte base
             throw new IOException("inconsistent byte count received from modbus device over connection " + conn + " : " + byteCount);                        
         }
     }
@@ -130,7 +130,7 @@ public class ReadCoils implements Request{
            conn = new Connection("192.168.1.200", 502);
            
            Data rxData = new Data(new byte[8]);
-           ReadCoils rwreq = new ReadCoils(new DataBlock(2,1,FunctionCode.READCOILS, FunctionCode.UNDEFINED, new Iec61131Address("IW0")));
+           ReadCoils rwreq = new ReadCoils(new DataBlock(0,2,FunctionCode.READCOILS, FunctionCode.UNDEFINED, new Iec61131Address("IW0")));
            long startTime;
            long stopTime;
            for (int i = 0; i < 10000; i++){

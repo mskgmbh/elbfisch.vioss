@@ -190,6 +190,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     }
 
     protected Request getWriteRequestFromFunctionCode(DataBlock db) {
+        System.out.println(this);
     	switch (db.getWriteFunctionCode()) {
     		case WRITEMULTIPLECOILS    : return new WriteMultipleCoils(db);
     		case WRITEMULTIPLEREGISTERS: return new WriteMultipleRegisters(db);
@@ -423,7 +424,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
 		            ((SignedIntegerValue)rsi.getValue()).setValid(true);
 		            break;
 		    	case WORD:
-		    		intVal = readRequest.getData().getWORD(rsi.getDataByteIndex());
+		    		intVal = readRequest.getData().getINT(rsi.getDataByteIndex()); // TODO: ULB: switch intepretation of word from getWORD() to getINT(): 0...65536 to -32768...32767
 		    		((SignedIntegerValue)rsi.getValue()).set(intVal);
 		            ((SignedIntegerValue)rsi.getValue()).setValid(true);
 		    		break;		    		
@@ -461,7 +462,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
 		    	case WORD:
 		    		intValue = (SignedIntegerValue)rsi.getValue();
 		    		intVal   = intValue.isValid() ? intValue.get() : 0;
-		            writeRequest.getData().setWORD(rsi.getDataByteIndex(), intVal);
+		            writeRequest.getData().setINT(rsi.getDataByteIndex(), intVal);// TODO: ULB: switch intepretation of word from setWORD() to setINT(): 0...65536 to -32768...32767
 		            break;		    		
 		    	case DWORD:
 		    		intValue = (SignedIntegerValue)rsi.getValue();

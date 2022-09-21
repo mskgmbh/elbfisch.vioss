@@ -73,10 +73,9 @@ public class RemoteSignalInfo extends org.jpac.vioss.RemoteSignalInfo{
 			case BIT:
 				dataByteIndex = 2 * (iec61131Address.getAddress() - assignedDataBlock.getIec61131Address().getAddress());//address is word address.
 				dataBitIndex  = iec61131Address.getBitAddress();
-                                if (dataBitIndex > 7) {
-                                        dataBitIndex -= 8;
-                                } else {
-                                        dataByteIndex++;
+                                if (dataBitIndex > 7) { // TODO: ULB: Implementierung an die korrekte des Modbus-Servers angepasst
+                                    dataBitIndex -= 8;
+                                    dataByteIndex++;
                                 }
 				break;
 			case BYTE:

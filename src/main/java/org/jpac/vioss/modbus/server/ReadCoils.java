@@ -57,7 +57,7 @@ public class ReadCoils extends Command{
     public void decode(ByteBuf byteBuf){
         address     = byteBuf.readShort();//bit address
         size        = byteBuf.readShort();//number of bits
-        sizeInBytes = byteBuf.readByte(); //number of bytes involved
+        sizeInBytes = (size % 8 != 0) ? (size / 8)+1 : size / 8; //number of bytes involved // TODO: ULB: wird im Protokoll vom Client nicht übertragen, daher hier berechnen !!!
         Log.debug("received FctCode: {}", this);
     }
     

@@ -44,10 +44,8 @@ public class WriteMultipleRegistersAcknowledgement extends Acknowledgement{
     public void encode(ByteBuf byteBuf){
         super.encode(byteBuf);
         if (this.exceptionCode == ExceptionCode.NONE){
-            super.encode(byteBuf);
             byteBuf.writeShort(address);
             byteBuf.writeShort(size);
-            byteBuf.writeBytes(buffer, 0, 2 * size);
         }
         else{
            this.exceptionCode.encode(byteBuf);

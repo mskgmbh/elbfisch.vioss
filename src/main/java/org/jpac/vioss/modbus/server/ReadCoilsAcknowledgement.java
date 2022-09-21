@@ -48,9 +48,8 @@ public class ReadCoilsAcknowledgement extends Acknowledgement{
     public void encode(ByteBuf byteBuf){
         super.encode(byteBuf);
         if (this.exceptionCode == ExceptionCode.NONE){
-            super.encode(byteBuf);
-            byteBuf.writeShort(address);
-            byteBuf.writeShort(size);
+            // byteBuf.writeShort(address); // TODO: ULB: address is not returned by protocol in ReadCoils-Response
+            byteBuf.writeByte(sizeInBytes); // TODO: ULB: it is not the number of bits returned here but the number of bytes
             byteBuf.writeBytes(buffer, 0, sizeInBytes);
         }
         else{

@@ -42,7 +42,7 @@ public class InvalidFunctionCodeAcknowledgement extends Acknowledgement{
  
     @Override
     public void encode(ByteBuf byteBuf){
-        byteBuf.writeByte(fctCode & 0x80);
+        byteBuf.writeByte(fctCode | 0x80);// TODO: ULB
         ExceptionCode.INVALIDFUNCTIONCODE.encode(byteBuf);
     }
 }

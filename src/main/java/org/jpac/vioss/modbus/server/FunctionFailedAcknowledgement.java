@@ -43,7 +43,7 @@ public class FunctionFailedAcknowledgement extends Acknowledgement{
      //server
     @Override
     public void encode(ByteBuf byteBuf){
-        byteBuf.writeByte(fctCode & 0x80);
+        byteBuf.writeByte(fctCode | 0x80);  // TODO: ULB
         ExceptionCode.FUNCTIONFAILED.encode(byteBuf);
     }
 }

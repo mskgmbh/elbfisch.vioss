@@ -44,10 +44,9 @@ public class ReadHoldingRegistersAcknowledgement extends Acknowledgement{
     public void encode(ByteBuf byteBuf){
         super.encode(byteBuf);
         if (this.exceptionCode == ExceptionCode.NONE){
-            super.encode(byteBuf);
-            byteBuf.writeShort(address);
-            byteBuf.writeShort(size);
-            byteBuf.writeBytes(buffer, 0, 2 * size);
+            // byteBuf.writeShort(address);                     // TODO: ULB: address is not returned in response as defined in modbus protocol
+            byteBuf.writeByte(sizeInBytes);                     // TODO: ULB: protocol defines to return number of bytes not the number of registers
+            byteBuf.writeBytes(buffer, 0, sizeInBytes);         // TODO: ULB: changed from 2 * size to sizeInBytes as this is already calculated earlier in Command
         }
         else{
            this.exceptionCode.encode(byteBuf);

@@ -48,7 +48,7 @@ public class MessageFactory {
         this.datablocks         = datablocks;
     }
     
-    public Message getRecycledMessage(ByteBuf byteBuf) throws InvalidFunctionCodeException{
+    public Message getRecycledMessage(ByteBuf byteBuf) throws InvalidFunctionCodeException {
         Message message = null;
         fctCode         = byteBuf.readByte();
         FunctionCode commandId = FunctionCode.fromInt(fctCode);

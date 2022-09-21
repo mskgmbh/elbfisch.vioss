@@ -27,6 +27,7 @@
 package org.jpac.vioss.modbus;
 
 import java.io.IOException;
+import org.jpac.WrongUseException;
 import org.jpac.plc.AddressException;
 import org.jpac.plc.Data;
 import org.jpac.plc.ValueOutOfRangeException;
@@ -46,6 +47,9 @@ public class ReadHoldingRegisters implements Request{
     
     public ReadHoldingRegisters(DataBlock dataBlock){
         this.dataBlock = dataBlock;
+        if ((dataBlock.getSize()%2) != 0) { // TODO: ULB: check inserted to verify that size is a multiple of 2 -> a whole multiple register size 
+            throw new WrongUseException("dataBlock size must be multiple of 2");
+        }
     }
 
     @Override
@@ -65,7 +69,7 @@ public class ReadHoldingRegisters implements Request{
     }    
 
     protected void readData(Connection conn) throws IOException {
-        int numberOfBytes = 2 * dataBlock.getSize();
+        int numberOfBytes = dataBlock.getSize(); // TODO: ULB
         try{
             for (int i = 0; i < numberOfBytes; i++){
                 getData().setBYTE(i, (int)conn.getInputStream().readByte() & 0x000000FF);
@@ -77,13 +81,13 @@ public class ReadHoldingRegisters implements Request{
     }
 
     protected void writeRequestHeader(Connection conn) throws IOException{
-        conn.getOutputStream().writeShort(getNextTransactionIdentifier());                  //transaction id
-        conn.getOutputStream().writeShort((short)PROTOCOLIDENTIFIER);                       //protocol identifier (always 0x0000)
-        conn.getOutputStream().writeShort((short)LENGTHFIELD);                              //protocol identifier (always 0x0000)
-        conn.getOutputStream().writeByte((byte)UNITIDENTIFIER);                             //unit identifier (not used)        
+        conn.getOutputStream().writeShort(getNextTransactionIdentifier());                    //transaction id
+        conn.getOutputStream().writeShort((short)PROTOCOLIDENTIFIER);                         //protocol identifier (always 0x0000)
+        conn.getOutputStream().writeShort((short)LENGTHFIELD);                                //protocol identifier (always 0x0000)
+        conn.getOutputStream().writeByte((byte)UNITIDENTIFIER);                               //unit identifier (not used)        
         conn.getOutputStream().writeByte((byte)FunctionCode.READHOLDINGREGISTERS.getValue()); //function code
-        conn.getOutputStream().writeShort((short)dataBlock.getAddress());                   //address of the first register
-        conn.getOutputStream().writeShort((short)dataBlock.getSize());                      //number of registers
+        conn.getOutputStream().writeShort((short)dataBlock.getAddress());                     //address of the first register
+        conn.getOutputStream().writeShort((short)dataBlock.getSize() / 2);                    //number of registers                    // TODO: ULB: changed due to datablock change from word to byte base
     }
     
     protected void readResponseHeader(Connection conn) throws IOException{
@@ -105,7 +109,7 @@ public class ReadHoldingRegisters implements Request{
         if (functionCode != (byte)FunctionCode.READHOLDINGREGISTERS.getValue()){
             throw new IOException("exception received from modbus device over connection " + conn + " : function code = " + functionCode + ", exception code:" + byteCount);            
         }        
-        if (byteCount != 2 * dataBlock.getSize()){
+        if (byteCount != dataBlock.getSize()){                                                                                      // TODO: ULB: changed due to datablock change from word to byte base
             throw new IOException("inconsistent byte count received from modbus device over connection " + conn + " : " + byteCount);                        
         }
     }

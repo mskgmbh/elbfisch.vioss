@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
  * @author berndschuster
  */
 abstract public class Command implements Message{
-    protected Logger  Log = LoggerFactory.getLogger("jpac.vios.modbus.server");
+    protected Logger  Log = LoggerFactory.getLogger("jpac.vioss.modbus.server");
 
     protected Acknowledgement acknowledgement;
     protected FunctionCode    commandId;

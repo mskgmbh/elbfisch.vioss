@@ -27,6 +27,7 @@
 package org.jpac.vioss.modbus;
 
 import java.io.IOException;
+import org.jpac.WrongUseException;
 import org.jpac.plc.AddressException;
 import org.jpac.plc.Data;
 
@@ -44,8 +45,10 @@ public class WriteMultipleRegisters implements Request{
     private int     transactionIdentifier;
     
     public WriteMultipleRegisters(DataBlock dataBlock){
-
         this.dataBlock = dataBlock;
+        if ((dataBlock.getSize()%2) != 0) { // TODO: ULB: check inserted to verify that size is a multiple of 2 -> a whole multiple register size 
+            throw new WrongUseException("dataBlock size must be multiple of 2");
+        }
     }
 
     public void write(Connection conn) throws IOException {
@@ -55,14 +58,7 @@ public class WriteMultipleRegisters implements Request{
     }
 
     protected void writeData(Connection conn) throws IOException {
-        try{
-            for (int i = 0; i < dataBlock.getSize(); i++){
-                conn.getOutputStream().writeShort(dataBlock.getData().getWORD(2 * i));
-            }
-        }
-        catch(AddressException exc){
-            throw new IOException(exc);
-        }
+        conn.getOutputStream().write(dataBlock.getData().getBytes()); // TODO: ULB: changed due to datablock change from word to byte base
     }
 
     public void read(Connection conn) throws IOException {
@@ -78,10 +74,10 @@ public class WriteMultipleRegisters implements Request{
         conn.getOutputStream().writeShort((short)PROTOCOLIDENTIFIER);                            //protocol identifier (always 0x0000)
         conn.getOutputStream().writeShort((short)LENGTHFIELD);                                   //length field
         conn.getOutputStream().writeByte((byte)UNITIDENTIFIER);                                  //unit identifier (not used)        
-        conn.getOutputStream().writeByte((byte)FunctionCode.WRITEMULTIPLEREGISTERS.getValue());     //function code
+        conn.getOutputStream().writeByte((byte)FunctionCode.WRITEMULTIPLEREGISTERS.getValue());  //function code
         conn.getOutputStream().writeShort((short)dataBlock.getAddress());                        //address of the first register
-        conn.getOutputStream().writeShort((short)(dataBlock.getSize()));                         //register count
-        conn.getOutputStream().writeByte((byte)(2 * dataBlock.getSize()));                       //byte count of the registers to write 
+        conn.getOutputStream().writeShort((short)(dataBlock.getSize()/2));                       //register count                             // TODO: ULB: changed due to datablock change from word to byte base
+        conn.getOutputStream().writeByte((byte)(dataBlock.getSize()));                           //byte count of the registers to write       // TODO: ULB: changed due to datablock change from word to byte base
     }
     
     protected void readResponseHeader(Connection conn) throws IOException{
@@ -104,8 +100,8 @@ public class WriteMultipleRegisters implements Request{
         if (functionCode != (byte)FunctionCode.WRITEMULTIPLEREGISTERS.getValue()){
             throw new IOException("exception received from modbus device over connection " + conn + " : function code = " + functionCode + " Exception code " + (startingAddress & 0xFF));            
         }  
-        if (quantityOfRegisters != dataBlock.getSize()){
-            throw new IOException("inconsistent byte count received from modbus device over connection " + conn + " : " + quantityOfRegisters);                        
+        if (quantityOfRegisters != dataBlock.getSize()/2){ // TODO: ULB: changed due to datablock change from word to byte base
+            throw new IOException("inconsistent register count received from modbus device over connection " + conn + " : " + quantityOfRegisters);                        
         }        
     }
     

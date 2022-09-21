@@ -67,11 +67,9 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     private final static String BINDADDRESS        = "BindAddress";
     private final static String SERVICEPORT        = "ServicePort";
     private final static String DEFAULTACCESSLEVEL = "DefaultAccessLevel";
-
-
+    
     public enum State {IDLE, TRANSCEIVING, CLOSINGCONNECTION, STOPPED};
-    
-    
+        
     private State state;
     
     private boolean    propServiceEnabled;
@@ -81,10 +79,13 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     private Service    service;
     
     private DataBlocks datablocks;
+    
+    private boolean    wasAtLeastOneClientConnected;
 
     public IOHandler(URI uri, SubnodeConfiguration parameterConfiguration) throws IllegalUriException, WrongUseException, InvalidAddressSpecifierException{
         //URI: "modbus.server:"
         super(uri, parameterConfiguration);
+        wasAtLeastOneClientConnected = false;
 
         SubnodeConfiguration inputDatablockConfiguration = null;
         SubnodeConfiguration outputDatablockConfiguration = null;
@@ -213,6 +214,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
         boolean  allSignalsProperlyTransferred = true;
         try {
             if (service.atLeastOneClientConnected()){
+                wasAtLeastOneClientConnected = true;
                 //propagate input signals
                 synchronized (datablocks.getInputDatablock()) {                    
                     for(Signal ios: getInputSignals()){
@@ -225,10 +227,14 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
 
             }
             else{
-                for(Signal ios: getInputSignals()){
-                    //invalidate input signals
-                    ios.invalidate();
-                }                
+                if(wasAtLeastOneClientConnected) {
+                    wasAtLeastOneClientConnected = false;
+                    for(Signal ios: getInputSignals()){
+                        //invalidate input signals
+                        ios.invalidate();
+                    }
+                    datablocks.getInputDatablock().getData().clear();
+                }           
             }
             synchronized (datablocks.getOutputDatablock()) {                    
                 //propagate output signals
@@ -267,7 +273,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
                     ((SignedIntegerValue)rsi.getValue()).setValid(true);
                     break;
                 case WORD:
-                    intVal = rsi.getAssignedDataBlock().getData().getWORD(rsi.getDataByteIndex());
+                    intVal = rsi.getAssignedDataBlock().getData().getINT(rsi.getDataByteIndex()); // TODO: ULB: switched intepretation of IEC-word type  from getWORD() to getINT(): 0...65536 to -32768...32767
                     ((SignedIntegerValue)rsi.getValue()).set(intVal);
                     ((SignedIntegerValue)rsi.getValue()).setValid(true);
                     break;
@@ -306,7 +312,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
                     case WORD:
                         intValue = (SignedIntegerValue)rsi.getValue();
                         intVal   = intValue.isValid() ? intValue.get() : 0;
-                        rsi.getAssignedDataBlock().getData().setWORD(rsi.getDataByteIndex(), intVal);
+                        rsi.getAssignedDataBlock().getData().setINT(rsi.getDataByteIndex(), intVal); // TODO: ULB: switched intepretation of IEC- word type from setWORD() to setINT(): 0...65536 to -32768...32767
                         break;		    		
                     case DWORD:
                         intValue = (SignedIntegerValue)rsi.getValue();

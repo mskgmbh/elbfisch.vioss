@@ -46,9 +46,10 @@ public class ReadHoldingRegisters extends Command{
     protected int       sizeInBytes;
     protected byte[]    buffer;    
     
-    public ReadHoldingRegisters(DataBlock datablock){
+    public ReadHoldingRegisters(DataBlock datablock) {
         super(FunctionCode.READHOLDINGREGISTERS);
         this.dataBlock = datablock;
+        this.buffer    = new byte[BUFFERSIZE]; // TODO: ULB: buffer wurde nich instanziiert deshalb kam eine NullPointerException
     }
     
     //server
@@ -57,7 +58,7 @@ public class ReadHoldingRegisters extends Command{
         super.decode(byteBuf);
         address     = byteBuf.readShort();
         size        = byteBuf.readShort();
-        sizeInBytes = byteBuf.readByte();
+        sizeInBytes = 2 * size;              // TODO: ULB: will not be passed -> double the given quantity of registers
     }
     
     //server

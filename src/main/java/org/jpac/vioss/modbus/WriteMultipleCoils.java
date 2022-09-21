@@ -55,14 +55,7 @@ public class WriteMultipleCoils implements Request{
     }
 
     protected void writeData(Connection conn) throws IOException {
-        try{
-            for (int i = 0; i < dataBlock.getSize(); i++){
-                conn.getOutputStream().writeShort(dataBlock.getData().getWORD(2 * i));
-            }
-        }
-        catch(AddressException exc){
-            throw new IOException(exc);
-        }
+        conn.getOutputStream().write(dataBlock.getData().getBytes()); // TODO: ULB: changed due to datablock change from word to byte base
     }
 
     public void read(Connection conn) throws IOException {
@@ -80,11 +73,13 @@ public class WriteMultipleCoils implements Request{
         conn.getOutputStream().writeByte((byte)UNITIDENTIFIER);                              //unit identifier (not used)        
         conn.getOutputStream().writeByte((byte)FunctionCode.WRITEMULTIPLECOILS.getValue());  //function code
         conn.getOutputStream().writeShort((short)dataBlock.getAddress());                    //address of the first coil
-        conn.getOutputStream().writeShort((short)(16 * dataBlock.getSize()));                //number of coils
-        conn.getOutputStream().writeByte((byte)(2 * dataBlock.getSize()));                   //byte count of the registers to write 
+        conn.getOutputStream().writeShort((short)(8 * dataBlock.getSize()));                 //number of coils                           // TODO: ULB: changed due to datablock change from word to byte base
+        conn.getOutputStream().writeByte((byte)(dataBlock.getSize()));                       //byte count of the registers to write      // TODO: ULB: changed due to datablock change from word to byte base
+        System.out.println("writingRequestHeader done ...");
     }
     
     protected void readResponseHeader(Connection conn) throws IOException{
+        System.out.println("readRensponseHeader ...");
         int receivedTransactionIdentifier = (int)conn.getInputStream().readShort();
         if (receivedTransactionIdentifier != getActualTransactionIdentifier()){
             throw new IOException("inconsistent transaction identifier received over modbus connection " + conn + " : " + receivedTransactionIdentifier);
@@ -100,12 +95,12 @@ public class WriteMultipleCoils implements Request{
         }
         int functionCode    = (int)conn.getInputStream().readByte();
         if (functionCode != FunctionCode.WRITEMULTIPLECOILS.getValue()){
-        	int exceptionCode = (int)conn.getInputStream().readByte();
+            int exceptionCode = (int)conn.getInputStream().readByte();
             throw new IOException("exception received from modbus device over connection " + conn + " : function code = " + Integer.toHexString(functionCode) + " exception code = " + exceptionCode);            
         }  
         int startingAddress = (int)conn.getInputStream().readShort();
         int bitcount        = (int)conn.getInputStream().readShort();
-        if (bitcount != 16 * dataBlock.getSize()){
+        if (bitcount != (8 * dataBlock.getSize())){ // TODO: ULB: changed due to datablock change from word to byte base
             throw new IOException("inconsistent byte count received from modbus device over connection " + conn + " : " + bitcount);                        
         }                
     }
@@ -151,5 +146,5 @@ public class WriteMultipleCoils implements Request{
            exc.printStackTrace();
            try{conn.close();}catch(IOException ex){};
        }
-    }            
+    }         
 }
