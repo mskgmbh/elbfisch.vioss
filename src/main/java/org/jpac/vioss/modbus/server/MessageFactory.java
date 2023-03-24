@@ -77,6 +77,9 @@ public class MessageFactory {
             case WRITEMULTIPLECOILS:
                 message = new WriteMultipleCoils(datablocks.getInputDatablock());
                 break;
+            case WRITESINGLEREGISTER:
+                message = new WriteSingleRegister(datablocks.getInputDatablock());                    
+                break;
             case WRITEMULTIPLEREGISTERS:
                 message = new WriteMultipleRegisters(datablocks.getInputDatablock());                    
                 break;

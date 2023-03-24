@@ -56,9 +56,9 @@ public class ReadHoldingRegisters extends Command{
     @Override
     public void decode(ByteBuf byteBuf){
         super.decode(byteBuf);
-        address     = byteBuf.readShort();
-        size        = byteBuf.readShort();
-        sizeInBytes = 2 * size;              // TODO: ULB: will not be passed -> double the given quantity of registers
+        address     = byteBuf.readUnsignedShort();      // TODO: ULB: changed to unsigned: address     = byteBuf.readShort();
+        size        = byteBuf.readUnsignedShort();      // TODO: ULB: changed to unsigned: address     = byteBuf.readShort();
+        sizeInBytes = 2 * size;                         // TODO: ULB: will not be passed -> double the given quantity of registers
     }
     
     //server
@@ -67,8 +67,9 @@ public class ReadHoldingRegisters extends Command{
         ExceptionCode excCode = ExceptionCode.NONE;
         try{
             synchronized (dataBlock) {
-                int addr = dataBlock.getAddress() - 2 * address;
+                int addr = 2 * address - dataBlock.getAddress();
                 System.arraycopy(dataBlock.getData().getBytes(), addr, buffer, 0, sizeInBytes);
+                
             }
         } catch(Exception exc){
             Log.error("Error: Failed to handle data:" + this);

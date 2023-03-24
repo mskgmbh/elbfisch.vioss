@@ -38,6 +38,7 @@ public enum FunctionCode {
     READDISCRETEINPUTS    (0x02),
     READHOLDINGREGISTERS  (0x03),
     READINPUTREGISTERS    (0x04),
+    WRITESINGLEREGISTER   (0x06),
     WRITEMULTIPLECOILS    (0x0F),
     WRITEMULTIPLEREGISTERS(0x10),
     READWRITEREGISTERS    (0x17);
@@ -57,12 +58,12 @@ public enum FunctionCode {
     }
     
     public boolean isWriteFunctionBlock() {
-    	return this.equals(WRITEMULTIPLECOILS) || this.equals(WRITEMULTIPLEREGISTERS);
+    	return this.equals(WRITEMULTIPLECOILS) || this.equals(WRITEMULTIPLEREGISTERS)|| this.equals(WRITESINGLEREGISTER);
     }
     
     public boolean isRegisterOriented() {
     	return this.equals(READHOLDINGREGISTERS)   || this.equals(READINPUTREGISTERS) || this.equals(READWRITEREGISTERS) || 
-    		   this.equals(WRITEMULTIPLEREGISTERS) || this.equals(READHOLDINGREGISTERS);
+    		   this.equals(WRITESINGLEREGISTER) || this.equals(WRITEMULTIPLEREGISTERS) || this.equals(READHOLDINGREGISTERS);
     }
 
     static public FunctionCode fromInt(int ifc) {
@@ -71,6 +72,7 @@ public enum FunctionCode {
     		case 0x02: return READDISCRETEINPUTS;
     		case 0x03: return READHOLDINGREGISTERS;
     		case 0x04: return READINPUTREGISTERS;
+                case 0x06: return WRITESINGLEREGISTER;
     		case 0x0F: return WRITEMULTIPLECOILS;
     		case 0x10: return WRITEMULTIPLEREGISTERS;
     		case 0x17: return READWRITEREGISTERS;

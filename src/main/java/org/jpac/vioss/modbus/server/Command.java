@@ -67,6 +67,9 @@ abstract public class Command implements Message{
                 case READHOLDINGREGISTERS:
                     acknowledgement = new ReadHoldingRegistersAcknowledgement();
                     break;
+                case WRITESINGLEREGISTER:
+                    acknowledgement = new WriteSingleRegisterAcknowledgement();
+                    break;
                 case WRITEMULTIPLECOILS:
                     acknowledgement = new WriteMultipleCoilsAcknowledgement();
                     break;

@@ -1,6 +1,6 @@
 /**
  * PROJECT   : Elbfisch - java process automation controller (jPac) 
- * MODULE    : modbus server WriteMultipleRegisters.java (versatile input output subsystem)
+ * MODULE    : modbus server WriteSingleRegister.java (versatile input output subsystem)
  * VERSION   : -
  * DATE      : -
  * PURPOSE   : 
@@ -26,6 +26,7 @@
 package org.jpac.vioss.modbus.server;
 
 import io.netty.buffer.ByteBuf;
+import java.math.BigInteger;
 import org.jpac.vioss.modbus.DataBlock;
 import org.jpac.vioss.modbus.FunctionCode;
 
@@ -33,9 +34,9 @@ import org.jpac.vioss.modbus.FunctionCode;
  *
  * @author berndschuster
  */
-public class WriteMultipleRegisters extends Command{
+public class WriteSingleRegister extends Command{
     
-    protected final int BUFFERSIZE = 512;
+    protected final int BUFFERSIZE = 2;
     
     protected DataBlock dataBlock;
     protected int       address;
@@ -43,8 +44,8 @@ public class WriteMultipleRegisters extends Command{
     protected int       sizeInBytes;
     protected byte[]    buffer;
     
-    public WriteMultipleRegisters(DataBlock dataBlock){
-        super(FunctionCode.WRITEMULTIPLEREGISTERS);
+    public WriteSingleRegister(DataBlock dataBlock){
+        super(FunctionCode.WRITESINGLEREGISTER);
         this.dataBlock = dataBlock;
         this.buffer    = new byte[BUFFERSIZE];
     }
@@ -53,8 +54,8 @@ public class WriteMultipleRegisters extends Command{
     @Override
     public void decode(ByteBuf byteBuf){
         address     = byteBuf.readUnsignedShort();// TODO: ULB: changed to unsigned: address     = byteBuf.readShort();
-        size        = byteBuf.readUnsignedShort();// TODO: ULB: changed to unsigned: size        = byteBuf.readShort();
-        sizeInBytes = byteBuf.readByte();
+        size        = 1; // ULB: only a single register is to be written
+        sizeInBytes = 2 * size;
         byteBuf.readBytes(buffer, 0, sizeInBytes);
         Log.debug("received FctCode: {}", this);
     }
@@ -63,9 +64,10 @@ public class WriteMultipleRegisters extends Command{
     @Override
     public Acknowledgement handleRequest(CommandHandler commandHandler) {
         ExceptionCode excCode = ExceptionCode.NONE;
+        int addr = 0;
         try{
             synchronized (dataBlock) {
-                int addr = 2 * address - dataBlock.getAddress();
+                addr = 2 * address - dataBlock.getAddress();
                 System.arraycopy(buffer, 0, dataBlock.getData().getBytes(), addr, sizeInBytes);     
             }
         } catch(Exception exc){
@@ -75,6 +77,7 @@ public class WriteMultipleRegisters extends Command{
        getAcknowledgement().setExceptionCode(excCode);
        getAcknowledgement().setAddress(address);
        getAcknowledgement().setSize(size);
+       ((WriteSingleRegisterAcknowledgement)getAcknowledgement()).setReplyRegisterValue(new BigInteger(buffer).intValue());
        return getAcknowledgement();
     }
     

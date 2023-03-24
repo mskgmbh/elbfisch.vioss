@@ -102,8 +102,9 @@ public class DataBlock {
                     boolean contained  = iec61131Address.getAccessMode() == targetAddress.accessMode;
                     int factor = 0;
                     switch(targetAddress.getType()){
+                        case BIT: // TODO: ULB: Type 'BIT' ergaenzt, da diese in der IEC6113Address einstellbar, hier aber nicht beruecksichtigt war
                         case BYTE:
-                            factor = 1;
+                            factor = 2; // TODO: ULB: changed 1 => 2: Register-Basis bei IEC6113-BIT- und Byte Adressen in Byte umrechnen
                             break;
                         case WORD:
                             factor = 2;
@@ -114,7 +115,9 @@ public class DataBlock {
                     }
                     //check if the data item fits into the datablock
                     int targetByteAddress = factor * targetAddress.getAddress();
-                    contained = contained && iec61131Address.getAddress() <= targetByteAddress && iec61131Address.getAddress() + this.size > targetByteAddress;
+                    //int dataBlockByteAddress = factor
+                    contained = contained && address <= targetByteAddress && address + this.size > targetByteAddress; // TODO: ULB
+                    // TODO: ULB: Original-Implementierung: contained = contained && iec61131Address.getAddress() <= targetByteAddress && iec61131Address.getAddress() + this.size > targetByteAddress;
                     return contained;
 		}	
 		

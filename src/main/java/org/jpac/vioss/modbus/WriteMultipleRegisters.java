@@ -75,7 +75,7 @@ public class WriteMultipleRegisters implements Request{
         conn.getOutputStream().writeShort((short)LENGTHFIELD);                                   //length field
         conn.getOutputStream().writeByte((byte)UNITIDENTIFIER);                                  //unit identifier (not used)        
         conn.getOutputStream().writeByte((byte)FunctionCode.WRITEMULTIPLEREGISTERS.getValue());  //function code
-        conn.getOutputStream().writeShort((short)dataBlock.getAddress());                        //address of the first register
+        conn.getOutputStream().writeShort(dataBlock.getAddress()/2);                             //address of the first register              // TODO: ULB: transform address from byte back to word for request; short kann keine Werte über 32768
         conn.getOutputStream().writeShort((short)(dataBlock.getSize()/2));                       //register count                             // TODO: ULB: changed due to datablock change from word to byte base
         conn.getOutputStream().writeByte((byte)(dataBlock.getSize()));                           //byte count of the registers to write       // TODO: ULB: changed due to datablock change from word to byte base
     }

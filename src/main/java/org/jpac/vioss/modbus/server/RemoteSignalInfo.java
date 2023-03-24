@@ -69,7 +69,7 @@ public class RemoteSignalInfo extends org.jpac.vioss.RemoteSignalInfo{
             case BIT:
                     iecByteIndex  = 2 * iec61131Address.getAddress();
                     iecItemSize   = 2;
-                    dataByteIndex = iecByteIndex - assignedDataBlock.getAddress();//address is word address.
+                    dataByteIndex = iecByteIndex - assignedDataBlock.getAddress();//address is byte address. // TODO: ULB: original //address is word address.
                     dataBitIndex  = iec61131Address.getBitAddress();
                     if (dataBitIndex > 7) {
                         dataBitIndex -= 8;
@@ -98,7 +98,7 @@ public class RemoteSignalInfo extends org.jpac.vioss.RemoteSignalInfo{
                     //cannot happen
                     break;
         }
-        if (iecByteIndex < assignedDataBlock.getAddress() || (iecByteIndex + iecItemSize) > (assignedDataBlock.getAddress() + assignedDataBlock.getSize())){
+        if (iecByteIndex < assignedDataBlock.getAddress() || (iecByteIndex + iecItemSize) > (assignedDataBlock.getAddress() + assignedDataBlock.getSize())){ 
             throw new InvalidAddressSpecifierException("signal does not fit into assigned datablock:" + ioSignal); 
         }
         Log.debug(ioSignal + " assigned to " + assignedDataBlock + " dataByteIndex = " + dataByteIndex + " databitIndex = " + dataBitIndex + ")");

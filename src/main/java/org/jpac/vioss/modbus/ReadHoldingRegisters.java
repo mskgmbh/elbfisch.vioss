@@ -86,7 +86,7 @@ public class ReadHoldingRegisters implements Request{
         conn.getOutputStream().writeShort((short)LENGTHFIELD);                                //protocol identifier (always 0x0000)
         conn.getOutputStream().writeByte((byte)UNITIDENTIFIER);                               //unit identifier (not used)        
         conn.getOutputStream().writeByte((byte)FunctionCode.READHOLDINGREGISTERS.getValue()); //function code
-        conn.getOutputStream().writeShort((short)dataBlock.getAddress());                     //address of the first register
+        conn.getOutputStream().writeShort(dataBlock.getAddress() / 2);                        //address of the first register          // TODO: ULB: transform address from byte back to word for request
         conn.getOutputStream().writeShort((short)dataBlock.getSize() / 2);                    //number of registers                    // TODO: ULB: changed due to datablock change from word to byte base
     }
     

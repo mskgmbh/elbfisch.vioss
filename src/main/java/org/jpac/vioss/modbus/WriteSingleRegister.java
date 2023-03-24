@@ -27,6 +27,7 @@
 package org.jpac.vioss.modbus;
 
 import java.io.IOException;
+import org.jpac.WrongUseException;
 import org.jpac.plc.AddressException;
 import org.jpac.plc.Data;
 
@@ -34,7 +35,7 @@ import org.jpac.plc.Data;
  *
  * @author berndschuster
  */
-public class WriteMultipleCoils implements Request{
+public class WriteSingleRegister implements Request{
     private final static int PROTOCOLIDENTIFIER = 0x0000;
     private final static int UNITIDENTIFIER     = 0x01;
     private final static int LENGTHFIELD        = 0x000B;
@@ -43,9 +44,11 @@ public class WriteMultipleCoils implements Request{
 
     private int     transactionIdentifier;
     
-    public WriteMultipleCoils(DataBlock dataBlock){
-
+    public WriteSingleRegister(DataBlock dataBlock){
         this.dataBlock = dataBlock;
+        if ((dataBlock.getSize()%2) != 0) { // TODO: ULB: check inserted to verify that size is a multiple of 2 -> a whole multiple register size 
+            throw new WrongUseException("dataBlock size must be multiple of 2");
+        }
     }
 
     public void write(Connection conn) throws IOException {
@@ -64,22 +67,19 @@ public class WriteMultipleCoils implements Request{
     
     public Data getData() {
     	return dataBlock.getData();
-    }    
+    }
 
     protected void writeRequestHeader(Connection conn) throws IOException{
-        conn.getOutputStream().writeShort(getNextTransactionIdentifier());                   //transaction id
-        conn.getOutputStream().writeShort((short)PROTOCOLIDENTIFIER);                        //protocol identifier (always 0x0000)
-        conn.getOutputStream().writeShort((short)LENGTHFIELD);                               //length field
-        conn.getOutputStream().writeByte((byte)UNITIDENTIFIER);                              //unit identifier (not used)        
-        conn.getOutputStream().writeByte((byte)FunctionCode.WRITEMULTIPLECOILS.getValue());  //function code
-        conn.getOutputStream().writeShort(dataBlock.getAddress()/2);                         //address of the first coil                 // TODO: ULB: transform address from byte back to word for request
-        conn.getOutputStream().writeShort((short)(8 * dataBlock.getSize()));                 //number of coils                           // TODO: ULB: changed due to datablock change from word to byte base
-        conn.getOutputStream().writeByte((byte)(dataBlock.getSize()));                       //byte count of the registers to write      // TODO: ULB: changed due to datablock change from word to byte base
-        System.out.println("writingRequestHeader done ...");
+        conn.getOutputStream().writeShort(getNextTransactionIdentifier());                       //transaction id
+        conn.getOutputStream().writeShort((short)PROTOCOLIDENTIFIER);                            //protocol identifier (always 0x0000)
+        conn.getOutputStream().writeShort((short)LENGTHFIELD);                                   //length field
+        conn.getOutputStream().writeByte((byte)UNITIDENTIFIER);                                  //unit identifier (not used)        
+        conn.getOutputStream().writeByte((byte)FunctionCode.WRITESINGLEREGISTER.getValue());     //function code
+        conn.getOutputStream().writeShort(dataBlock.getAddress()/2);                             //address of the first register              // TODO: ULB: transform address from byte back to word for request; short kann keine Werte über 32768
+        try { conn.getOutputStream().writeShort(dataBlock.getData().getWORD(0));} catch(AddressException ex) { throw new IOException(ex.getMessage());}
     }
     
     protected void readResponseHeader(Connection conn) throws IOException{
-        System.out.println("readRensponseHeader ...");
         int receivedTransactionIdentifier = (int)conn.getInputStream().readShort();
         if (receivedTransactionIdentifier != getActualTransactionIdentifier()){
             throw new IOException("inconsistent transaction identifier received over modbus connection " + conn + " : " + receivedTransactionIdentifier);
@@ -93,16 +93,19 @@ public class WriteMultipleCoils implements Request{
         if (unitIdentifier != UNITIDENTIFIER){
             throw new IOException("inconsistent unit identifier received over modbus connection " + conn + " : " + unitIdentifier);            
         }
-        int functionCode    = (int)conn.getInputStream().readByte();
-        if (functionCode != FunctionCode.WRITEMULTIPLECOILS.getValue()){
-            int exceptionCode = (int)conn.getInputStream().readByte();
-            throw new IOException("exception received from modbus device over connection " + conn + " : function code = " + Integer.toHexString(functionCode) + " exception code = " + exceptionCode);            
+        int functionCode        = (int)conn.getInputStream().readByte();
+        int startingAddress     = (int)conn.getInputStream().readShort();
+        int registerReplyValue  = (int)conn.getInputStream().readShort();
+        if (functionCode != (byte)FunctionCode.WRITEMULTIPLEREGISTERS.getValue()){
+            throw new IOException("exception received from modbus device over connection " + conn + " : function code = " + functionCode + " Exception code " + (startingAddress & 0xFF));            
         }  
-        int startingAddress = (int)conn.getInputStream().readShort();
-        int bitcount        = (int)conn.getInputStream().readShort();
-        if (bitcount != (8 * dataBlock.getSize())){ // TODO: ULB: changed due to datablock change from word to byte base
-            throw new IOException("inconsistent byte count received from modbus device over connection " + conn + " : " + bitcount);                        
-        }                
+        try {
+            if (registerReplyValue != dataBlock.getData().getWORD(0)){ // TODO: ULB: changed due to datablock change from word to byte base
+                throw new IOException("inconsistent register value received from modbus device over connection " + conn + " : " + registerReplyValue);                        
+            }
+        }catch(AddressException ex) {
+            throw new IOException(ex.getMessage());
+        }
     }
     
     private short getNextTransactionIdentifier(){
@@ -123,15 +126,15 @@ public class WriteMultipleCoils implements Request{
        try{
            conn = new Connection("192.168.1.200", 502);
            
-           DataBlock db = new DataBlock(0,2, FunctionCode.UNDEFINED, FunctionCode.WRITEMULTIPLECOILS, new Iec61131Address("QW0"));   
-           WriteMultipleCoils wreq = new WriteMultipleCoils(db);
+           DataBlock db = new DataBlock(0,2, FunctionCode.UNDEFINED, FunctionCode.WRITEMULTIPLEREGISTERS, new Iec61131Address("QW0"));   
+           WriteSingleRegister wreq = new WriteSingleRegister(db);
            long startTime;
            long stopTime;
            for (int i = 0; i < 10000; i++){
                 startTime = System.nanoTime();
                 wreq.write(conn);
                 wreq.read(conn);
-                db.getData().setBYTE(0, i & 0xFF);
+                db.getData().setBYTE(1, i);
                 //db.getData().setWORD(1, i);
                 //txData.setBIT(0, 0, i % 2 == 0);
                 //txData.setBIT(1, 0, i % 2 == 1);
@@ -146,5 +149,5 @@ public class WriteMultipleCoils implements Request{
            exc.printStackTrace();
            try{conn.close();}catch(IOException ex){};
        }
-    }         
+    }            
 }

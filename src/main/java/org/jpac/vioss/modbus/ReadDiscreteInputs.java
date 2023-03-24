@@ -84,8 +84,8 @@ public class ReadDiscreteInputs implements Request{
         conn.getOutputStream().writeShort((short)PROTOCOLIDENTIFIER);                       //protocol identifier (always 0x0000)
         conn.getOutputStream().writeShort((short)LENGTHFIELD);                              //protocol identifier (always 0x0000)
         conn.getOutputStream().writeByte((byte)UNITIDENTIFIER);                             //unit identifier (not used)        
-        conn.getOutputStream().writeByte((byte)FunctionCode.READDISCRETEINPUTS.getValue());          //function code
-        conn.getOutputStream().writeShort((short)dataBlock.getAddress());                   //address of the first register
+        conn.getOutputStream().writeByte((byte)FunctionCode.READDISCRETEINPUTS.getValue()); //function code
+        conn.getOutputStream().writeShort(dataBlock.getAddress()/2);                        //address of the first register  // TODO: ULB: transform address from byte back to word for request
         conn.getOutputStream().writeShort((short)16 * dataBlock.getSize());                 //number of registers
     }
     

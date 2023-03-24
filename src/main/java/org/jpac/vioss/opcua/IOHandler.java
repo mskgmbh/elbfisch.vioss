@@ -420,10 +420,12 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
                     
     protected String buildEndpointUrlExtension(URI uri){
         StringBuilder epSuffix = new StringBuilder();
-        String[] pathTokens = uri.getPath().substring(1).split("/");
-        int numberOfEndpointRelatedTokens = pathTokens.length - 2; //last two tokens are /<namespace index>/<node identifier>
-        for (int i = 0; i < numberOfEndpointRelatedTokens; i++ ){
-            epSuffix.append("/").append(pathTokens[i]);
+        if(uri.getPath() != null) {
+            String[] pathTokens = uri.getPath().substring(1).split("/");
+            int numberOfEndpointRelatedTokens = pathTokens.length - 2; //last two tokens are /<namespace index>/<node identifier>
+            for (int i = 0; i < numberOfEndpointRelatedTokens; i++ ){
+                epSuffix.append("/").append(pathTokens[i]);
+            }
         }
         return epSuffix.toString();
     }

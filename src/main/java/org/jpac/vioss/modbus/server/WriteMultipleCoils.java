@@ -53,8 +53,8 @@ public class WriteMultipleCoils extends Command{
     //server
     @Override
     public void decode(ByteBuf byteBuf){
-        address     = byteBuf.readShort();//bit address
-        size        = byteBuf.readShort();//number of bits
+        address     = byteBuf.readUnsignedShort();//bit address         // TODO: ULB: changed to unsigned: address     = byteBuf.readShort();
+        size        = byteBuf.readUnsignedShort();//number of bits              // TODO: ULB: changed to unsigned: address     = byteBuf.readShort();
         sizeInBytes = byteBuf.readByte(); //number of bytes involved
         byteBuf.readBytes(buffer, 0, sizeInBytes);
         Log.debug("received FctCode: {}", this);

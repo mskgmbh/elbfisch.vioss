@@ -82,7 +82,7 @@ public class ReadCoils implements Request{
         conn.getOutputStream().writeShort((short)LENGTHFIELD);                     //length field (always 0x0006)
         conn.getOutputStream().writeByte((byte)UNITIDENTIFIER);                    //unit identifier (not used)        
         conn.getOutputStream().writeByte((byte)FunctionCode.READCOILS.getValue()); //function code
-        conn.getOutputStream().writeShort((short)dataBlock.getAddress());          //address of the first coil
+        conn.getOutputStream().writeShort(dataBlock.getAddress()/2);               //address of the first coil              // TODO: ULB: transform address from byte back to word for request
         conn.getOutputStream().writeShort((short)8 * dataBlock.getSize());         //number of coils                        // TODO: ULB: changed due to datablock change from word to byte base
     }
     

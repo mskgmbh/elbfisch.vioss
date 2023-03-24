@@ -1,6 +1,6 @@
 /**
  * PROJECT   : Elbfisch - java process automation controller (jPac) 
- * MODULE    : modbus server WriteMultipleRegistersAcknowledgement.java (versatile input output subsystem)
+ * MODULE    : modbus server WriteSingleRegisterAcknowledgement.java (versatile input output subsystem)
  * VERSION   : -
  * DATE      : -
  * PURPOSE   : 
@@ -32,11 +32,13 @@ import org.jpac.vioss.modbus.FunctionCode;
  *
  * @author berndschuster
  */
-public class WriteMultipleRegistersAcknowledgement extends Acknowledgement{
+public class WriteSingleRegisterAcknowledgement extends Acknowledgement{
     protected int handle;
     
-    public WriteMultipleRegistersAcknowledgement(){
-        super(FunctionCode.WRITEMULTIPLEREGISTERS);   
+    protected int replyRegisterValue;
+    
+    public WriteSingleRegisterAcknowledgement(){
+        super(FunctionCode.WRITESINGLEREGISTER);  
     }
     
      //server
@@ -45,10 +47,14 @@ public class WriteMultipleRegistersAcknowledgement extends Acknowledgement{
         super.encode(byteBuf);
         if (this.exceptionCode == ExceptionCode.NONE){
             byteBuf.writeShort(address);
-            byteBuf.writeShort(size);
+            byteBuf.writeShort(replyRegisterValue);
         }
         else{
            this.exceptionCode.encode(byteBuf);
         }
+    }
+    
+    public void setReplyRegisterValue(int registerValue) {
+        this.replyRegisterValue = registerValue;
     }
 }
