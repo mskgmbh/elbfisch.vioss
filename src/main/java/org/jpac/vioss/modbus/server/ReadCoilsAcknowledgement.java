@@ -56,4 +56,14 @@ public class ReadCoilsAcknowledgement extends Acknowledgement{
            this.exceptionCode.encode(byteBuf);
         }
     }
+
+    @Override
+    public int getDataSizeInBytesForMBAP() {
+        if (this.exceptionCode == ExceptionCode.NONE){
+            return sizeInBytes + 2; // 1 Byte Function code + 1 Byte returned data length in bytes 
+        }
+        else {
+            return 2; // 1 Byte Function/error code + 1 Byte exception code
+        }
+    }
 }

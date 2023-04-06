@@ -98,7 +98,7 @@ public class CommandHandler extends ChannelInboundHandlerAdapter {
         }
         out.clear();
         Log.debug("writing received mbap {}", mbap);
-        mbap.encode(out);
+        mbap.encode(out, acknowledgement);
         Log.debug("{} acknowledged with {}", command, acknowledgement);
         acknowledgement.encode(out);
         out.retain();//"out" should be reused for all acknowledgements until context is closed

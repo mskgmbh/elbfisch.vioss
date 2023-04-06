@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author berndschuster
  */
-public class Acknowledgement implements Message{
+public abstract class Acknowledgement implements Message{
     protected Logger  Log = LoggerFactory.getLogger("jpac.vios.modbus.server");
     
     protected FunctionCode  functionCode;
@@ -133,10 +133,14 @@ public class Acknowledgement implements Message{
         this.sizeInBytes = sizeInBytes;
     }  
     
+    
+    /**
+     * @return the dataSizeInBytesForMBAP
+     */
+    public abstract int getDataSizeInBytesForMBAP();
+    
     @Override
     public String toString(){
         return getClass().getSimpleName() + "(" + exceptionCode + ")";
     }    
-
-
 }

@@ -57,4 +57,14 @@ public class WriteSingleRegisterAcknowledgement extends Acknowledgement{
     public void setReplyRegisterValue(int registerValue) {
         this.replyRegisterValue = registerValue;
     }
+
+    @Override
+    public int getDataSizeInBytesForMBAP() {
+        if (this.exceptionCode == ExceptionCode.NONE){
+            return 5; // 1 Byte Function code + 2 Bytes register address + 2 Bytes register value
+        }
+        else {
+            return 2; // 1 Byte Function/error code + 1 Byte exception code
+        }
+    }
 }

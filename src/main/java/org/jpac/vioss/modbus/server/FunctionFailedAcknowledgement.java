@@ -43,7 +43,12 @@ public class FunctionFailedAcknowledgement extends Acknowledgement{
      //server
     @Override
     public void encode(ByteBuf byteBuf){
-        byteBuf.writeByte(fctCode | 0x80);  // TODO: ULB
+        byteBuf.writeByte(fctCode | 0x80);
         ExceptionCode.FUNCTIONFAILED.encode(byteBuf);
+    }
+
+    @Override
+    public int getDataSizeInBytesForMBAP() {
+        return 2; // 1 Byte Error code + 1 Byte Exception code
     }
 }

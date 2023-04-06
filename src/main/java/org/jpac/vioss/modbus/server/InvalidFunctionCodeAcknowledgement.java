@@ -37,12 +37,17 @@ public class InvalidFunctionCodeAcknowledgement extends Acknowledgement{
     
     public InvalidFunctionCodeAcknowledgement(int fctCode){
         super(FunctionCode.UNDEFINED);
-        this.fctCode       = fctCode;        
+        this.fctCode       = fctCode;     
     }
  
     @Override
     public void encode(ByteBuf byteBuf){
         byteBuf.writeByte(fctCode | 0x80);// TODO: ULB
         ExceptionCode.INVALIDFUNCTIONCODE.encode(byteBuf);
+    }
+
+    @Override
+    public int getDataSizeInBytesForMBAP() {
+        return 2; // 1 Byte Error code + 1 Byte Exception code
     }
 }

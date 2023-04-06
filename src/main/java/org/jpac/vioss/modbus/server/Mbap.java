@@ -33,11 +33,12 @@ import io.netty.buffer.ByteBuf;
 public class Mbap implements Message {
     protected byte[] mbap = new byte[7];
     
-    @Override
-    public void encode(ByteBuf targetByteBuf) {
-       for (int i = 0; i < 7; i++) {
+    public void encode(ByteBuf targetByteBuf, Acknowledgement acknowledgement) {
+        for (int i = 0; i < 4; i++) {
             targetByteBuf.writeByte(mbap[i]);
         }
+        targetByteBuf.writeShort(acknowledgement.getDataSizeInBytesForMBAP() + 1); // Length fiels is data length in bytes + 1 byte for Unit Identifier 
+        targetByteBuf.writeByte(mbap[6]); // Unit Identifier
     }
 
     @Override

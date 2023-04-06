@@ -51,4 +51,14 @@ public class WriteMultipleRegistersAcknowledgement extends Acknowledgement{
            this.exceptionCode.encode(byteBuf);
         }
     }
+
+    @Override
+    public int getDataSizeInBytesForMBAP() {
+        if (this.exceptionCode == ExceptionCode.NONE){
+            return 5; // 1 Byte Function code + 2 Bytes starting address + 2 Bytes Quantity of outputs
+        }
+        else {
+            return 2; // 1 Byte Function/error code + 1 Byte exception code
+        }
+    }
 }
