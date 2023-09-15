@@ -69,19 +69,21 @@ public class Handshake {
     protected final Event           requestRemoved;
     
     protected final Event           valid;
+    
+    protected boolean               useQuotesInURI;
 
-    public Handshake(Module containingModule, String identifier, URI uri) throws URISyntaxException {
+    public Handshake(Module containingModule, String identifier, URI uri, boolean useQuotesInURI) throws URISyntaxException {
         this.identifier = identifier;
         this.uri        = uri;
         
         if (uri != null){
             //handshake is used to access signals on a remote opc server
-            this.request     = new IoLogical(containingModule, identifier + ".Request", new URI(uri + ".Request"), IoDirection.OUTPUT);
-            this.ready       = new IoLogical(containingModule, identifier + ".Ready",   new URI(uri + ".Ready"), IoDirection.INPUT);
-            this.ack         = new IoLogical(containingModule, identifier + ".Ack",     new URI(uri + ".Ack"), IoDirection.INPUT);
-            this.active      = new IoLogical(containingModule, identifier + ".Active",  new URI(uri + ".Active"), IoDirection.INPUT);
-            this.command     = new IoSignedInteger(containingModule, identifier + ".Command", new URI(uri + ".Command"), IoDirection.OUTPUT);
-            this.result      = new IoSignedInteger(containingModule, identifier + ".Result", new URI(uri + ".Result"), IoDirection.INPUT);
+            this.request     = new IoLogical(containingModule, identifier + ".Request", new URI(uri + ".Request" + "?useQuotes=" + useQuotesInURI), IoDirection.OUTPUT);
+            this.ready       = new IoLogical(containingModule, identifier + ".Ready",   new URI(uri + ".Ready" + "?useQuotes=" + useQuotesInURI), IoDirection.INPUT);
+            this.ack         = new IoLogical(containingModule, identifier + ".Acknowledge", new URI(uri + ".Acknowledge" + "?useQuotes=" + useQuotesInURI), IoDirection.INPUT);
+            this.active      = new IoLogical(containingModule, identifier + ".Active",  new URI(uri + ".Active" + "?useQuotes=" + useQuotesInURI), IoDirection.INPUT);
+            this.command     = new IoSignedInteger(containingModule, identifier + ".Command", new URI(uri + ".Command" + "?useQuotes=" + useQuotesInURI), IoDirection.OUTPUT);
+            this.result      = new IoSignedInteger(containingModule, identifier + ".Result", new URI(uri + ".Result" + "?useQuotes=" + useQuotesInURI), IoDirection.INPUT);
             //initialize output signals
             this.request.setDeferred(false);
             this.command.setDeferred(DONTCAREINTEGER);
@@ -90,7 +92,7 @@ public class Handshake {
             //handshake is used to give a remote opc client access to own signals
             this.request     = new Logical(containingModule, identifier + ".Request");
             this.ready       = new Logical(containingModule, identifier + ".Ready");
-            this.ack         = new Logical(containingModule, identifier + ".Ack");
+            this.ack         = new Logical(containingModule, identifier + ".Acknowledge");
             this.active      = new Logical(containingModule, identifier + ".Active");
             this.command     = new SignedInteger(containingModule, identifier + ".Command");
             this.result      = new SignedInteger(containingModule, identifier + ".Result");
@@ -107,6 +109,10 @@ public class Handshake {
         this.requested              = new Event(()-> isRequested());
         this.requestRemoved         = new Event(()-> isRequestRemoved());
         this.valid                  = new Event(()-> isValid());
+    }
+
+    public Handshake(Module containingModule, String identifier, URI uri) throws URISyntaxException {
+        this(containingModule, identifier, uri, false);
     }
     
     /**
