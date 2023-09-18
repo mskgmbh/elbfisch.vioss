@@ -75,7 +75,7 @@ public class RemoteSignalInfo extends org.jpac.vioss.RemoteSignalInfo{
     public RemoteSignalInfo(Signal ioSignal){
     	super(ioSignal.getIdentifier(), BasicSignalType.fromSignal(ioSignal));
     	this.ioSignal         = ioSignal;
-        this.useQuotes        = ((IoSignal)ioSignal).getParameters().containsKey(PARAMETER_USEQUOTES) && ((IoSignal)ioSignal).getParameters().get(PARAMETER_USEQUOTES).equals("PARAMETERVALUE_TRUE");//use quotes for accessing S7 plc's
+        this.useQuotes        = ((IoSignal)ioSignal).getParameters().containsKey(PARAMETER_USEQUOTES) && ((IoSignal)ioSignal).getParameters().get(PARAMETER_USEQUOTES).equals(PARAMETERVALUE_TRUE);//use quotes for accessing S7 plc's
         StringTokenizer path  = new StringTokenizer(((IoSignal)ioSignal).getUri().getPath().substring(1),"/");
         
         try{this.nameSpaceIndex  = Integer.parseInt(path.nextToken());}catch(NumberFormatException exc){/*nothing to do*/};        
