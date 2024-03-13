@@ -89,7 +89,8 @@ public class ReadHoldingRegisters implements Request{
         conn.getOutputStream().writeShort(dataBlock.getAddress() / 2);                        //address of the first register          // TODO: ULB: transform address from byte back to word for request
         conn.getOutputStream().writeShort((short)dataBlock.getSize() / 2);                    //number of registers                    // TODO: ULB: changed due to datablock change from word to byte base
     }
-    
+
+    @SuppressWarnings("unused") 
     protected void readResponseHeader(Connection conn) throws IOException{
         int receivedTransactionIdentifier = (int)conn.getInputStream().readShort();
         if (receivedTransactionIdentifier != getActualTransactionIdentifier()){
@@ -126,7 +127,7 @@ public class ReadHoldingRegisters implements Request{
         return (short)transactionIdentifier;
     } 
     
-     public static void main(String[] args){
+    /* public static void main(String[] args){
        boolean handles = false;
        Connection conn = null;
        try{
@@ -151,5 +152,5 @@ public class ReadHoldingRegisters implements Request{
            exc.printStackTrace();
            try{conn.close();}catch(IOException ex){};
        }
-    }
+    }*/
 }

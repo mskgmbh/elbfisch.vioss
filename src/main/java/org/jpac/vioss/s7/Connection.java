@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
  * represents a TCP/IP connection to a S7 plc. The connection uses the ISO protocol.
  *
  */
+@SuppressWarnings("unused") 
 public class Connection extends org.jpac.plc.Connection{
 	static Logger Log = LoggerFactory.getLogger("jpac.vioss.s7");
 

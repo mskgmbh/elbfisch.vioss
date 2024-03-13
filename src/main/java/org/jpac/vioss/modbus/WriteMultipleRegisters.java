@@ -28,7 +28,6 @@ package org.jpac.vioss.modbus;
 
 import java.io.IOException;
 import org.jpac.WrongUseException;
-import org.jpac.plc.AddressException;
 import org.jpac.plc.Data;
 
 /**
@@ -80,6 +79,7 @@ public class WriteMultipleRegisters implements Request{
         conn.getOutputStream().writeByte((byte)(dataBlock.getSize()));                           //byte count of the registers to write       // TODO: ULB: changed due to datablock change from word to byte base
     }
     
+    @SuppressWarnings("unused") 
     protected void readResponseHeader(Connection conn) throws IOException{
         int receivedTransactionIdentifier = (int)conn.getInputStream().readShort();
         if (receivedTransactionIdentifier != getActualTransactionIdentifier()){
@@ -117,7 +117,7 @@ public class WriteMultipleRegisters implements Request{
         return (short)transactionIdentifier;
     } 
     
-     public static void main(String[] args){
+     /*public static void main(String[] args){
        boolean handles = false;
        Connection conn = null;
        try{
@@ -146,5 +146,5 @@ public class WriteMultipleRegisters implements Request{
            exc.printStackTrace();
            try{conn.close();}catch(IOException ex){};
        }
-    }            
+    }*/            
 }

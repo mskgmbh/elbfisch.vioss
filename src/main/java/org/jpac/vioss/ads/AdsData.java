@@ -31,6 +31,7 @@ import java.io.IOException;
  *
  * @author berndschuster
  */
+@SuppressWarnings("unused")
 abstract public class AdsData {
     private int size;
     

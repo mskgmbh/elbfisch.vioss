@@ -26,8 +26,6 @@
 package org.jpac.vioss.revpi;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.pi4j.io.file.LinuxFile;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import org.jpac.Address;

@@ -79,6 +79,7 @@ public class WriteSingleRegister implements Request{
         try { conn.getOutputStream().writeShort(dataBlock.getData().getWORD(0));} catch(AddressException ex) { throw new IOException(ex.getMessage());}
     }
     
+    @SuppressWarnings("unused") 
     protected void readResponseHeader(Connection conn) throws IOException{
         int receivedTransactionIdentifier = (int)conn.getInputStream().readShort();
         if (receivedTransactionIdentifier != getActualTransactionIdentifier()){
@@ -120,7 +121,7 @@ public class WriteSingleRegister implements Request{
         return (short)transactionIdentifier;
     } 
     
-     public static void main(String[] args){
+     /*public static void main(String[] args){
        boolean handles = false;
        Connection conn = null;
        try{
@@ -149,5 +150,5 @@ public class WriteSingleRegister implements Request{
            exc.printStackTrace();
            try{conn.close();}catch(IOException ex){};
        }
-    }            
+    }*/         
 }

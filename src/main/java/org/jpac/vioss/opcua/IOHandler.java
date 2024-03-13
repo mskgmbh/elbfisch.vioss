@@ -45,7 +45,6 @@ import java.net.URI;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.HashMap;
 import java.util.concurrent.ExecutionException;
 import org.jpac.AsynchronousTask;
 import org.jpac.InconsistencyException;
@@ -312,7 +311,6 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     };    
     
     protected void closingConnection(){
-        boolean done = false;
         try{
             if (subscription != null){
                 //release subscription

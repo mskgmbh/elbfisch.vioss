@@ -35,6 +35,7 @@ import org.jpac.vioss.IoSignal;
  *
  * @author berndschuster
  */
+@SuppressWarnings("unused") 
 public class RemoteSignalInfo extends org.jpac.vioss.RemoteSignalInfo{
     
     private Signal          ioSignal;

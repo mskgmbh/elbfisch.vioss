@@ -233,6 +233,7 @@ public class WriteRequest extends org.jpac.plc.WriteRequest{
                            break;
                 case BYTE: LogString = "         byte address " + bitOffset / 8;
                            break;
+                default:
                 //not supported yet
                 //case WORD: LogString = "         byte address " + bitOffset / 8;
                 //           break;

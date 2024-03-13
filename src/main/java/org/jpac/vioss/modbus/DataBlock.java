@@ -112,6 +112,8 @@ public class DataBlock {
                         case DWORD:
                             factor = 4;
                             break;
+                        default:
+                            throw new WrongUseException("Error: unknown IEC61131Address type: " + targetAddress.getType());
                     }
                     //check if the data item fits into the datablock
                     int targetByteAddress = factor * targetAddress.getAddress();

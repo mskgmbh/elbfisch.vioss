@@ -27,7 +27,6 @@
 package org.jpac.vioss.modbus;
 
 import java.io.IOException;
-import org.jpac.plc.AddressException;
 import org.jpac.plc.Data;
 
 /**
@@ -77,7 +76,8 @@ public class WriteMultipleCoils implements Request{
         conn.getOutputStream().writeByte((byte)(dataBlock.getSize()));                       //byte count of the registers to write      // TODO: ULB: changed due to datablock change from word to byte base
         System.out.println("writingRequestHeader done ...");
     }
-    
+
+    @SuppressWarnings("unused") 
     protected void readResponseHeader(Connection conn) throws IOException{
         System.out.println("readRensponseHeader ...");
         int receivedTransactionIdentifier = (int)conn.getInputStream().readShort();
@@ -117,7 +117,7 @@ public class WriteMultipleCoils implements Request{
         return (short)transactionIdentifier;
     } 
     
-     public static void main(String[] args){
+     /*public static void main(String[] args){
        boolean handles = false;
        Connection conn = null;
        try{
@@ -146,5 +146,5 @@ public class WriteMultipleCoils implements Request{
            exc.printStackTrace();
            try{conn.close();}catch(IOException ex){};
        }
-    }         
+    }*/         
 }

@@ -38,7 +38,6 @@ import org.jpac.ProcessException;
 import org.jpac.Signal;
 import org.jpac.vioss.IllegalUriException;
 import org.jpac.vioss.IoSignal;
-import org.jpac.vioss.IoSignedInteger;
 
 
 /**

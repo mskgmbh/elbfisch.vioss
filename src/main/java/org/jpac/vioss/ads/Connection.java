@@ -98,10 +98,10 @@ public class Connection{
         //presumed that both recide in the same subnet
         long bestMatch            = Long.MAX_VALUE;
         String bestMatchedLocalIp = "";
-        Enumeration nis = NetworkInterface.getNetworkInterfaces();
+        Enumeration<?> nis = NetworkInterface.getNetworkInterfaces();
         while(nis.hasMoreElements()){
             NetworkInterface ni =(NetworkInterface) nis.nextElement();
-            Enumeration ias = ni.getInetAddresses();
+            Enumeration<?> ias = ni.getInetAddresses();
             while(ias.hasMoreElements()) {
                 InetAddress ia    = (InetAddress) ias.nextElement();
                 long        match = matchOctets(ia.getHostAddress(), plcHost);

@@ -17,7 +17,7 @@ public class DatablockAddress {
 	protected int        size;     //size of the data item [byte]
 	
 	public DatablockAddress() {
-		this.type        = type.UNDEFINED;
+		this.type        = Type.UNDEFINED;
 	}
 
 	public DatablockAddress(String addressSpecifier) throws InvalidAddressSpecifierException {

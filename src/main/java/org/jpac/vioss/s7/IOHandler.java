@@ -39,16 +39,12 @@ import org.jpac.Timer;
 import org.jpac.vioss.IoSignal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.commons.configuration.HierarchicalConfiguration;
 import org.apache.commons.configuration.SubnodeConfiguration;
 import org.jpac.AsynchronousTask;
 import org.jpac.InconsistencyException;
 import org.jpac.IoDirection;
-import org.jpac.JPac;
-import org.jpac.NumberOutOfRangeException;
 import org.jpac.ProcessException;
 import org.jpac.SignalAccessException;
-import org.jpac.SignedInteger;
 import org.jpac.WrongUseException;
 import org.jpac.plc.AddressException;
 import org.jpac.plc.LobRxTx;
@@ -444,6 +440,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     }
     
     @Override
+    @SuppressWarnings("unused") 
     public boolean handles(URI uri, IoDirection ioDirection) {
         boolean isHandledByThisInstance = false;
         int rack,slot,db;
@@ -496,6 +493,8 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
 		    	case INOUT:
 		    		isSuitable = isSuitableAsInput && isSuitableAsOutput;
 		    		break;
+                default:
+                    throw new WrongUseException("Error: ioDirection " + ioDirection + " not implemented for " + this);
 	    	}
     	} catch(Exception exc) {
     		Log.error("Error: ", exc);
@@ -504,8 +503,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler{
     	return isSuitable;
     }
     
-    protected int seizeDatablock(Signal signal) {
-    	int db = 0;
+    protected int seizeDatablock(Signal signal) {;
         StringTokenizer pathTokens = new StringTokenizer(((IoSignal)signal).getUri().getPath(),"/");
 	    Integer.decode(pathTokens.nextToken());
 	    Integer.decode(pathTokens.nextToken());

@@ -57,7 +57,7 @@ public class DeviceState {
     }
 
     public DeviceState(int deviceState) throws InvalidAddressException{
-       deviceState = deviceState;
+       this.deviceState = deviceState;
     }
     
     public void write(Connection connection) throws WrongUseException, IOException{        

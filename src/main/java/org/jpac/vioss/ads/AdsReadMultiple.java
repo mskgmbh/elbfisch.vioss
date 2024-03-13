@@ -32,6 +32,7 @@ import java.util.ArrayList;
  *
  * @author berndschuster
  */
+@SuppressWarnings("unused")
 public class AdsReadMultiple extends AdsReadWrite{
     private static int LENGTHSIZE        = 4;
     private static int REQUESTHEADERSIZE = 16;

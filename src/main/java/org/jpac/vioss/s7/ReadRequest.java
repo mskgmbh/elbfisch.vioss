@@ -257,6 +257,7 @@ public class ReadRequest extends org.jpac.plc.ReadRequest{
                            break; 
                 case BYTE: LogString = "         byte address " + bitOffset / 8;
                            break;
+                default:
                 //not supported yet
                 //case WORD: LogString = "         byte address " + bitOffset / 8;
                 //           break;

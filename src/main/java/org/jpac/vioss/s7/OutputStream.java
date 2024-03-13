@@ -131,6 +131,7 @@ import org.slf4j.LoggerFactory;
  * <br>
  * @see PlcInputStream
  */
+@SuppressWarnings("unused") 
 public class OutputStream extends java.io.FilterOutputStream{
 	static Logger Log = LoggerFactory.getLogger("jpac.plc.s7");
 

@@ -33,9 +33,6 @@ import io.netty.channel.FixedRecvByteBufAllocator;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
-import io.netty.handler.codec.LengthFieldPrepender;
-
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.SelfSignedCertificate;
@@ -50,6 +47,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author berndschuster
  */
+@SuppressWarnings("unused") 
 public class Service implements Runnable{
     public static final  int DEFAULTRECEIVEBUFFERSIZE = 32000;
     

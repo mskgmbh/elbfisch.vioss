@@ -88,7 +88,8 @@ public class ReadDiscreteInputs implements Request{
         conn.getOutputStream().writeShort(dataBlock.getAddress()/2);                        //address of the first register  // TODO: ULB: transform address from byte back to word for request
         conn.getOutputStream().writeShort((short)16 * dataBlock.getSize());                 //number of registers
     }
-    
+
+    @SuppressWarnings("unused") 
     protected void readResponseHeader(Connection conn) throws IOException{
         int receivedTransactionIdentifier = (int)conn.getInputStream().readShort();
         if (receivedTransactionIdentifier != getActualTransactionIdentifier()){
@@ -125,7 +126,7 @@ public class ReadDiscreteInputs implements Request{
         return (short)transactionIdentifier;
     } 
     
-     public static void main(String[] args){
+     /*public static void main(String[] args){
        boolean handles = false;
        Connection conn = null;
        try{
@@ -151,5 +152,5 @@ public class ReadDiscreteInputs implements Request{
            exc.printStackTrace();
            try{conn.close();}catch(IOException ex){};
        }
-    }
+    }*/
 }

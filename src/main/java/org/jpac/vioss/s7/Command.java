@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
  * implements some common features and concepts used by several transactional commands
  * 
  */
+@SuppressWarnings("unused") 
 public abstract class Command {
     static Logger Log = LoggerFactory.getLogger("jpac.plc.s7");
 

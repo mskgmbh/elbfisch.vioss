@@ -75,7 +75,6 @@ public class ReadCoils implements Request{
             throw new IOException(exc);
         }        
     }
-
     protected void writeRequestHeader(Connection conn) throws IOException{
         conn.getOutputStream().writeShort(getNextTransactionIdentifier());         //transaction id
         conn.getOutputStream().writeShort((short)PROTOCOLIDENTIFIER);              //protocol identifier (always 0x0000)
@@ -86,6 +85,7 @@ public class ReadCoils implements Request{
         conn.getOutputStream().writeShort((short)8 * dataBlock.getSize());         //number of coils                        // TODO: ULB: changed due to datablock change from word to byte base
     }
     
+    @SuppressWarnings("unused") 
     protected void readResponseHeader(Connection conn) throws IOException{
         int receivedTransactionIdentifier = (int)conn.getInputStream().readShort();
         if (receivedTransactionIdentifier != getActualTransactionIdentifier()){
@@ -123,7 +123,7 @@ public class ReadCoils implements Request{
         return (short)transactionIdentifier;
     } 
     
-     public static void main(String[] args){
+     /*public static void main(String[] args){
        boolean handles = false;
        Connection conn = null;
        try{
@@ -149,4 +149,5 @@ public class ReadCoils implements Request{
            try{conn.close();}catch(IOException ex){};
        }
     }
+    */
 }

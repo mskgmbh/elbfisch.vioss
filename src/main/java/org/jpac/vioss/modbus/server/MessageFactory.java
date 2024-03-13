@@ -28,7 +28,6 @@ package org.jpac.vioss.modbus.server;
 import org.jpac.vioss.modbus.FunctionCode;
 import io.netty.buffer.ByteBuf;
 import java.util.HashMap;
-import org.jpac.InconsistencyException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,6 +35,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author berndschuster
  */
+@SuppressWarnings("unused") 
 public class MessageFactory {
     private final Logger Log = LoggerFactory.getLogger("jpac.vios.modbus.server");    
     

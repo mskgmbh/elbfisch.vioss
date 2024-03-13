@@ -30,6 +30,7 @@ import org.eclipse.milo.opcua.sdk.client.api.identity.AnonymousProvider;
 import org.eclipse.milo.opcua.sdk.client.api.identity.IdentityProvider;
 import org.eclipse.milo.opcua.sdk.client.api.subscriptions.UaSubscription;
 import org.eclipse.milo.opcua.stack.client.DiscoveryClient;
+import org.eclipse.milo.opcua.stack.core.UaException;
 import org.eclipse.milo.opcua.stack.core.security.SecurityPolicy;
 import org.eclipse.milo.opcua.stack.core.types.builtin.LocalizedText;
 import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
@@ -284,8 +285,9 @@ public class Connection{
         return this.client;
     }
     
-    public UaVariableNode getVariableNode(NodeId nodeId) throws InterruptedException, ExecutionException{
-        return (UaVariableNode)client.getAddressSpace().getVariableNode(nodeId).get();
+    public UaVariableNode getVariableNode(NodeId nodeId) throws InterruptedException, ExecutionException, UaException{
+        return (UaVariableNode)client.getAddressSpace().getVariableNode(nodeId);        
+        //return (UaVariableNode)client.getAddressSpace().getVariableNode(nodeId).get();
     }
     
     public UaSubscription getSubscription(double publishingIntervall) throws Exception{

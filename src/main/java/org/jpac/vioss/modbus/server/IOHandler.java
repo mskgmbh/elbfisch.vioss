@@ -52,16 +52,17 @@ import org.slf4j.LoggerFactory;
  *
  * @author berndschuster
  */
+@SuppressWarnings("unused") 
 public class IOHandler extends org.jpac.vioss.IOHandler{
     static Logger Log = LoggerFactory.getLogger("jpac.vioss.modbus.server");
 	
     private final static String  HANDLEDSCHEME     = "MODBUS.SERVER";
-    private final static String  DATABLOCKS	   = "datablocks";
-    private final static String  INPUT    	   = "input";
-    private final static String  OUTPUT    	   = "output";
+    private final static String  DATABLOCKS	       = "datablocks";
+    private final static String  INPUT    	       = "input";
+    private final static String  OUTPUT    	       = "output";
     private final static String  ADDRESS           = "[@address]"; //[byte]
     private final static String  SIZE              = "[@size]";    //[byte]
-    private final static String  ACCESS            = "[@access]";    //Input,Output   
+    private final static String  ACCESS            = "[@access]";  //Input,Output   
     
     private final static String SERVICEENABLED     = "ServiceEnabled";
     private final static String BINDADDRESS        = "BindAddress";

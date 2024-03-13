@@ -33,6 +33,7 @@ import org.jpac.plc.Data;
  *
  * @author berndschuster
  */
+@SuppressWarnings("unused")
 public class AdsReadWriteMultiple extends AdsReadWrite{
     private static int LENGTHSIZE        = 4;
     private static int REQUESTHEADERSIZE = 16;

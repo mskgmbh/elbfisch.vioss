@@ -57,6 +57,7 @@ import org.slf4j.Logger;
  * In addition swapping of the byte order is done to convert from<br>
  * little endian to big endian<br>
  */
+@SuppressWarnings("unused") 
 public class InputStream extends java.io.FilterInputStream {
 	static Logger Log = LoggerFactory.getLogger("jpac.plc.s7");
 
@@ -329,7 +330,7 @@ public class InputStream extends java.io.FilterInputStream {
     }
     int ticks = 0;
     while((available() < n) && (ticks++ < this.MAXWAITTIME)){
-        try{Thread.currentThread().sleep(this.ONETICK);}catch(InterruptedException exc){};
+        try{Thread.sleep(this.ONETICK);}catch(InterruptedException exc){};
     }
     if (ticks >= MAXWAITTIME){
         //if the Plc controller does not answer in time

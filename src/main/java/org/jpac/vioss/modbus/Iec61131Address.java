@@ -12,8 +12,8 @@ public class Iec61131Address {
 	protected int        address;
 	
 	public Iec61131Address() {
-		this.accessMode  = accessMode.UNDEFINED;
-		this.type        = type.UNDEFINED;
+		this.accessMode  = AccessMode.UNDEFINED;
+		this.type        = Type.UNDEFINED;
 	}
 
 	public Iec61131Address(int address, int size, AccessMode accessMode, Type type) throws InvalidAddressSpecifierException {

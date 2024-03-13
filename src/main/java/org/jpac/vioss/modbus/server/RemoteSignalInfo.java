@@ -38,6 +38,7 @@ import org.jpac.vioss.modbus.Iec61131Address.AccessMode;
  *
  * @author berndschuster
  */
+@SuppressWarnings("unused") 
 public class RemoteSignalInfo extends org.jpac.vioss.RemoteSignalInfo{
     
     private Signal          ioSignal;
