@@ -99,7 +99,7 @@ public class RemoteSignalInfo extends org.jpac.vioss.RemoteSignalInfo{
     }  
     
     public void setOpcUaDataValue(DataValue dataValue) {
-        //Log.info("setOpcUaDataValue {}: {}", ioSignal, getValue());            
+        Log.debug("setOpcUaDataValue {}: {}", ioSignal, getValue());            
     	synchronized(this){
             this.monitoredItemValue        = dataValue;
             this.monitoredItemValueUpdated = true;

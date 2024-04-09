@@ -141,10 +141,11 @@ public class Connection{
         }
         
 //        EndpointDescription endpointDescription = Arrays.stream(endpoints)
-          EndpointDescription endpointDescription = endpoints.stream()
+        EndpointDescription endpointDescription = endpoints.stream()
 //                .filter(e -> e.getSecurityPolicyUri().equals(securityPolicy.getSecurityPolicyUri()))
-                .filter(e -> e.getSecurityPolicyUri().equals(securityPolicy.getUri()))
-                .findFirst().orElseThrow(() -> new IOException("endpoints for " + endpointUrl + " not reachable"));              
+//            .filter(e -> e.getSecurityPolicyUri().equals(securityPolicy.getUri()))
+            .filter(e -> e.getSecurityPolicyUri().equals(SecurityPolicy.None.getUri()))
+            .findFirst().orElseThrow(() -> new IOException("endpoints for " + endpointUrl + " not reachable"));              
         clientConfig = OpcUaClientConfig.builder()
             .setEndpoint(endpointDescription)
             .setIdentityProvider(identityProvider)
