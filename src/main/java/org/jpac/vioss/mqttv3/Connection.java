@@ -112,7 +112,7 @@ public class Connection{
      * @throws java.io.IOException
      */
     public void connect() throws Exception{
-        mqttClient.connect();
+        mqttClient.connect(options);
         connected = true;
     }
     

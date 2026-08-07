@@ -1,0 +1,15 @@
+{
+	"folders": [
+		{
+			"path": "../../../../../../../../MqttClient"
+		},
+		{
+			"path": "../../../../../../.."
+		}
+	],
+	"settings": {
+		"java.configuration.updateBuildConfiguration": "interactive",
+		"maven.view": "hierarchical",
+		"java.debug.settings.onBuildFailureProceed": true
+	}
+}

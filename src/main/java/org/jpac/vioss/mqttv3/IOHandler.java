@@ -47,17 +47,34 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.jpac.Signal;
 
+import java.io.FileInputStream;
+import java.security.KeyStore;
+import javax.net.SocketFactory;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
+
 /**
  *
  * @author berndschuster
  */
 public class IOHandler extends org.jpac.vioss.IOHandler implements MqttCallback{
     static Logger Log = LoggerFactory.getLogger("jpac.vioss.mqttv3");
-    private final static String             HANDLEDSCHEME             = "MQTTV3.TCP";
-    private final static int                CONNECTIONRETRYTIME       = 1000;//ms
-    private final static String             PARAMETERCREDENTIALS      = "credentials";
-    private final static String             PARAMETERUSERNAME         = "username";
-    private final static String            PARAMETERPASSWORD          = "password";
+    private final static String  HANDLEDSCHEME             = "MQTTV3.TCP";
+    private final static int     CONNECTIONRETRYTIME       = 1000;//ms
+    private final static String  PARAMETERCREDENTIALS      = "credentials";          
+    private final static String  PARAMETERUSERNAME         = "username";
+    private final static String  PARAMETERPASSWORD          = "password";
+    private final static String  PARAMETERSSL              = "ssl";
+
+    private final static String  PARAMETERSSLKEYKEYSTOREPATH    = "sslkeystorepath";
+    private final static String  PARAMETERSSLKEYSTOREPASSWORD   = "sslkeystorepassword";
+    private final static String  PARAMETERSSLKEYSTORETYPE       = "sslkeystoretype";
+    private final static String  PARAMETERSSLTRUSTSTOREPATH     = "truststorepath";
+    private final static String  PARAMETERSSLTRUSTSTOREPASSWORD = "truststorepassword";
+    private final static String  PARAMETERSSLTRUSTSTORETYPE     = "trustkeystoretype";
 
     public enum State             {IDLE, CONNECTING, TRANSCEIVING, CLOSINGCONNECTION, STOPPED};  
     
@@ -66,6 +83,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler implements MqttCallback{
     private ConnectionRunner      connectionRunner;
     private boolean               connected;
     private boolean               connecting;
+    private boolean               useSsl;
     
     private String                endpointUrl;  
     private MqttConnectOptions    mqttConnectOptions;
@@ -76,16 +94,76 @@ public class IOHandler extends org.jpac.vioss.IOHandler implements MqttCallback{
             JPac.getInstance().unregisterCyclicTask(this);
             throw new IllegalUriException("scheme '" + uri.getScheme() + "' not handled by " + toString());
         }
-        this.endpointUrl = "tcp://" + uri.getHost() + ":" + uri.getPort();
+        // Parse SSL parameter from URI path, default to false
+        this.useSsl = uri.getQuery() != null && uri.getQuery().contains("ssl=true");
+        
+        // Use ssl:// or tcp:// based on the ssl parameter
+        String protocol = useSsl ? "ssl://" : "tcp://";
+        this.endpointUrl = protocol + uri.getHost() + ":" + uri.getPort();
 
-        HierarchicalConfiguration deviceConfiguration = getParameterConfiguration().configurationAt(PARAMETERCREDENTIALS);
         mqttConnectOptions = new MqttConnectOptions();
-        mqttConnectOptions.setUserName(deviceConfiguration.getString(PARAMETERUSERNAME));
-        mqttConnectOptions.setPassword(deviceConfiguration.getString(PARAMETERPASSWORD).toCharArray());
+        mqttConnectOptions.setMqttVersion(MqttConnectOptions.MQTT_VERSION_3_1_1);
+        // Configure SSL socket factory if SSL is enabled
+        if (useSsl) {
+            try {
+                HierarchicalConfiguration sslConfiguration = getParameterConfiguration().configurationAt(PARAMETERSSL);
+                String keyStorePath       = sslConfiguration.getString(PARAMETERSSLKEYKEYSTOREPATH);
+                String keyStorePassword   = sslConfiguration.getString(PARAMETERSSLKEYSTOREPASSWORD);
+                String keyStoreType       = sslConfiguration.getString(PARAMETERSSLKEYSTORETYPE); // PKCS12, PEM, JKS, etc.
+                String trustStorePath     = sslConfiguration.getString(PARAMETERSSLTRUSTSTOREPATH);
+                String trustStorePassword = sslConfiguration.getString(PARAMETERSSLTRUSTSTOREPASSWORD);
+                String trustStoreType     = sslConfiguration.getString(PARAMETERSSLTRUSTSTORETYPE); // PKCS12, PEM, JKS, etc.
 
-        this.state                 = State.IDLE;
+                // 1. Load client key store (PKCS12 or JKS)
+                KeyStore keyStore = KeyStore.getInstance(keyStoreType);
+                keyStore.load(new FileInputStream(keyStorePath), keyStorePassword.toCharArray());
+
+                // 2. Initialize KeyManagerFactory with client key
+                KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+                kmf.init(keyStore, keyStorePassword.toCharArray());
+
+                // 3. Load trust store (for server cert validation)
+                KeyStore trustStore = KeyStore.getInstance(trustStoreType);
+                trustStore.load(new FileInputStream(trustStorePath), trustStorePassword.toCharArray());
+
+                // 4. Initialize TrustManagerFactory
+                TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+                tmf.init(trustStore);
+                // 5. Initialize SSLContext
+                SSLContext sslContext = SSLContext.getInstance("TLS");
+                sslContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
+                SocketFactory sslSocketFactory = sslContext.getSocketFactory();
+                mqttConnectOptions.setSocketFactory(sslSocketFactory);
+                Log.info("SSL socket factory configured for MQTT connection");
+            } catch (Exception e) {
+                Log.error("Failed to configure SSL socket factory: " + e.getMessage(), e);
+            }
+        }
+        else{
+            HierarchicalConfiguration tcpConfiguration = getParameterConfiguration().configurationAt(PARAMETERCREDENTIALS);
+            String username = tcpConfiguration.getString(PARAMETERUSERNAME);
+            String password = tcpConfiguration.getString(PARAMETERPASSWORD);
+            mqttConnectOptions.setUserName(username);  
+            mqttConnectOptions.setPassword(password.toCharArray());            
+        }
+        this.state             = State.IDLE;
+        this.connectionRunner  = new ConnectionRunner();
+    }
     
-        this.connectionRunner      = new ConnectionRunner();
+    /**
+     * Configures SSL socket factory for MQTT connection options
+     * @param options the MqttConnectOptions to configure
+     */
+    private void configureSslSocketFactory(MqttConnectOptions options) {
+        try {
+            // Create default SSL context which uses the system's default trust store
+            SSLContext sslContext = SSLContext.getDefault();
+            SocketFactory sslSocketFactory = sslContext.getSocketFactory();
+            options.setSocketFactory(sslSocketFactory);
+            Log.info("SSL socket factory configured for MQTT connection");
+        } catch (Exception e) {
+            Log.error("Failed to configure SSL socket factory: " + e.getMessage(), e);
+        }
     }
 
     @Override
