@@ -68,8 +68,6 @@ import javax.net.SocketFactory;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
-import java.security.cert.CertificateFactory;
-import java.security.cert.X509Certificate;
 
 /**
  *
@@ -91,7 +89,6 @@ public class IOHandler extends org.jpac.vioss.IOHandler implements MqttCallback{
     private final static String  PARAMETERSSLTRUSTSTOREPASSWORD = "truststorepassword";
     private final static String  PARAMETERSSLTRUSTSTORETYPE     = "trustkeystoretype";
 
-    private final static String  IETAG                          = "ie";
     private final static String  METADATATAG                    = "/m/";
     private final static String  STATUSTAG                      = "/s/";
     private final static String  DATATAG                        = "/d/";
@@ -114,8 +111,6 @@ public class IOHandler extends org.jpac.vioss.IOHandler implements MqttCallback{
     private String                dataTopic;
     private String                pubTopic;
     private String                statusTopic;
-    private boolean               dataReceived;
-    private boolean               statusReceived;
     private boolean               metaDataReceived;
     private boolean               awaitingMetadata;
     private MqttMessage           mqttMetaDataMessage;
@@ -220,21 +215,21 @@ public class IOHandler extends org.jpac.vioss.IOHandler implements MqttCallback{
         this.sequenceNumber    = 0;
     }
     
-    /**
-     * Configures SSL socket factory for MQTT connection options
-     * @param options the MqttConnectOptions to configure
-     */
-    private void configureSslSocketFactory(MqttConnectOptions options) {
-        try {
-            // Create default SSL context which uses the system's default trust store
-            SSLContext sslContext = SSLContext.getDefault();
-            SocketFactory sslSocketFactory = sslContext.getSocketFactory();
-            options.setSocketFactory(sslSocketFactory);
-            Log.info("SSL socket factory configured for MQTT connection");
-        } catch (Exception e) {
-            Log.error("Failed to configure SSL socket factory: " + e.getMessage(), e);
-        }
-    }
+    // /**
+    //  * Configures SSL socket factory for MQTT connection options
+    //  * @param options the MqttConnectOptions to configure
+    //  */
+    // private void configureSslSocketFactory(MqttConnectOptions options) {
+    //     try {
+    //         // Create default SSL context which uses the system's default trust store
+    //         SSLContext sslContext = SSLContext.getDefault();
+    //         SocketFactory sslSocketFactory = sslContext.getSocketFactory();
+    //         options.setSocketFactory(sslSocketFactory);
+    //         Log.info("SSL socket factory configured for MQTT connection");
+    //     } catch (Exception e) {
+    //         Log.error("Failed to configure SSL socket factory: " + e.getMessage(), e);
+    //     }
+    // }
 
     @Override
     public void run(){
@@ -247,8 +242,6 @@ public class IOHandler extends org.jpac.vioss.IOHandler implements MqttCallback{
                     connected        = false;
                     connecting       = false;
                     metaDataReceived = false;
-                    dataReceived     = false;
-                    statusReceived   = false;
                     awaitingMetadata = false;
 
                     state            = State.CONNECTING;
@@ -650,12 +643,6 @@ public class IOHandler extends org.jpac.vioss.IOHandler implements MqttCallback{
         return state == State.STOPPED;
     }
 
-    private void writeRemoteItem(RemoteSignalInfo rsi) throws MqttException{
-        var msg = new MqttMessage(rsi.genPayload());
-        msg.setQos(1);
-        connection.getMqttClient().publish(rsi.getTopic(), msg);
-    }
-
     @Override
     public void connectionLost(Throwable cause) {
         //initiate reconnect
@@ -673,11 +660,9 @@ public class IOHandler extends org.jpac.vioss.IOHandler implements MqttCallback{
             Log.debug("Received MQTT data message: " + message);
             setLastMqttDataMessage(message);
             handleDataTopic(message);
-            dataReceived     = true;
         } else if (topic.equals(statusTopic)){
             Log.debug("Received MQTT status message: " + message);
             setLastMqttStatusMessage(message);
-            statusReceived   = true;
         } else {
             Log.debug("Received MQTT message on unknown topic: " + topic);
         }
@@ -856,19 +841,6 @@ public class IOHandler extends org.jpac.vioss.IOHandler implements MqttCallback{
             while(!connected && !isTerminated() && !errorOccured);
             if (connected){
                 Log.info("... connection to server " + getEndpointUrl() + " established");            
-            }
-        }
-
-        private void subscribeInputSignals(){
-            for(Signal ios: getInputSignals()){
-                RemoteSignalInfo rsi = (RemoteSignalInfo)((IoSignal)ios).getRemoteSignalInfo();
-                try{
-                    connection.getMqttClient().subscribe(rsi.getTopic(), 1, (IMqttMessageListener)rsi);
-                    Log.debug("Subscribed topic:'" + rsi.getTopic() + "'");
-                }
-                catch(MqttException exc){
-                    Log.error("Error subscribing to topic " + rsi.getTopic() + " on MQTT broker " + getEndpointUrl(), exc);
-                }
             }
         }
                 
