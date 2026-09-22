@@ -10,7 +10,7 @@ import java.util.List;
 @Data
 public class Value {
     @JsonProperty("id")
-    private int id;
+    private String id;
 
     @JsonProperty("qc")
     private Integer qualityCode;

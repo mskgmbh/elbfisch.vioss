@@ -124,8 +124,9 @@ public class IOHandler extends org.jpac.vioss.IOHandler implements MqttCallback{
     private int                   sequenceNumber;
 
     private HashMap<String, DataPointDefinition> dataPointDefinitionsMap      = new HashMap<>();
-    private HashMap<Integer, IoSignal>           signalByTopicIdMap           = new HashMap<>();
+    private HashMap<String, IoSignal>            signalByTopicIdMap           = new HashMap<>();
     private ArrayList<IoSignal>                  listOfSignalsToBeTransmitted = new ArrayList<>();
+    private ObjectMapper                         objectMapper                 = new ObjectMapper();
         
     public IOHandler(URI uri, SubnodeConfiguration parameterConfiguration) throws IllegalUriException {
         super(uri, parameterConfiguration);
@@ -154,9 +155,9 @@ public class IOHandler extends org.jpac.vioss.IOHandler implements MqttCallback{
         else {
             throw new IllegalArgumentException("Metadata topic does not contain DATA or STATUS tag (/d/ or /s/): " + metaDataTopic);
         }
-        // Derive data and status topics from metadata topic
-        dataTopic   = metaDataTopic.replaceFirst(METADATATAG, DATATAG);
-        statusTopic = metaDataTopic.replaceFirst(METADATATAG, STATUSTAG);
+        // // Derive data and status topics from metadata topic
+        // dataTopic   = metaDataTopic.replaceFirst(METADATATAG, DATATAG);
+        // statusTopic = metaDataTopic.replaceFirst(METADATATAG, STATUSTAG);
        
         // Parse SSL parameter from URI path, default to false
         this.useSsl = uri.getQuery() != null && uri.getQuery().contains("ssl=true");
@@ -474,6 +475,9 @@ public class IOHandler extends org.jpac.vioss.IOHandler implements MqttCallback{
                         }
                     });
                     pubTopic = parsed.getConnections().get(0).getDataPoints().get(0).getPubTopic();//assume that there is one connection and one list of data point definitions
+                    dataTopic = parsed.getConnections().get(0).getDataPoints().get(0).getTopic();//assume that there is one connection and one list of data point definitions
+                    statusTopic = parsed.getStatusTopic();//assume that there is one connection and one list of data point definitions
+                    Log.debug("Pub topic: " + pubTopic + ", Data topic: " + dataTopic + ", Status topic: " + statusTopic);
                 };
                 awaitingMetadata = false;
                 //subscribe to the status topic provided by the industrial edge data broker
@@ -522,9 +526,9 @@ public class IOHandler extends org.jpac.vioss.IOHandler implements MqttCallback{
                 if (Log.isDebugEnabled()){
                     ObjectMapper mapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
                     String newValueJson = mapper.writeValueAsString(valueList);                 
-                    Log.debug("ValueList: " + newValueJson);
+                    Log.debug("publishing " + pubTopic + ": " + newValueJson);
                 }
-                connection.getMqttClient().publish(pubTopic, new ObjectMapper().writeValueAsBytes(valueList), 1, false);
+                connection.getMqttClient().publish(pubTopic, objectMapper.writeValueAsBytes(valueList), 1, false);
             }
         }
         finally{

@@ -23,7 +23,7 @@ public class DataPointDefinition {
     private String dataType; // e.g., "Byte", "Int", "Bool"
 
     @JsonProperty("id")
-    private int id;
+    private String id;
 
     @JsonProperty("name")
     private String name; // e.g., "msk/automation/byteArray0"

@@ -57,7 +57,7 @@ public class RemoteSignalInfo extends org.jpac.vioss.RemoteSignalInfo{
 	protected Value           monitoredItemValue;
 	protected Value           remoteItemValue;
 	protected String          topic;
-	protected int             topicId;
+	protected String          topicId;
 
 	protected org.jpac.vioss.iedb.json.Value jsonValue;
 	protected ArrayList<Object> values;
@@ -168,17 +168,17 @@ public class RemoteSignalInfo extends org.jpac.vioss.RemoteSignalInfo{
 		return this.topic;
 	}
 
-	public int getTopicId(){
+	public String getTopicId(){
 		return this.topicId;
 	}
 
-	public void setTopicId(int topicId){
+	public void setTopicId(String topicId){
 		this.topicId = topicId;
 	}
 
 	public org.jpac.vioss.iedb.json.Value computeJsonValue(){
 		this.jsonValue.setId(topicId);
-		this.jsonValue.setQualityCode(this.ioSignal.isValid() ? 3 : 0);
+		this.jsonValue.setQualityCode(this.ioSignal.isValid() ? 3 : 0);//check, if siemens industrial edge OPC connector accepts quality code
 		this.jsonValue.setTimestamp(java.time.Instant.now().toString());
 		this.jsonValue.setValue(computeValue());
 		return this.jsonValue;
