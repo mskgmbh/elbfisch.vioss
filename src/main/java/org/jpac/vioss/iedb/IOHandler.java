@@ -450,7 +450,6 @@ public class IOHandler extends org.jpac.vioss.IOHandler implements MqttCallback{
                             if (typeMatches((IoSignal)signal, def)) {
                                 rsi.setTopicId(def.getId());
                                 if (isWritable(def)){
-                                    //signalByTopicIdMap.put(rsi.getTopicId(), (IoSignal)signal);
                                     Log.debug("Signal '" + signal.getQualifiedIdentifier() + "' assigned to '" + ((RemoteSignalInfo)((IoSignal)signal).getRemoteSignalInfo()).getTopic() + "' by id " + ((RemoteSignalInfo)((IoSignal)signal).getRemoteSignalInfo()).getTopicId());
                                 }
                                 else{
@@ -648,6 +647,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler implements MqttCallback{
         //initiate reconnect
         state = State.IDLE;
         Log.error("lost connection to server " + getEndpointUrl() + " cause: " + cause.getMessage());   
+        Log.error("Error:", cause);
     }
 
     @Override
@@ -681,7 +681,10 @@ public class IOHandler extends org.jpac.vioss.IOHandler implements MqttCallback{
         parsed.getValues().forEach(value -> {
             Log.debug("Value ID: " + value.getId() + ", Quality Code: " + value.getQualityCode() + ", Timestamp: " + value.getTimestamp() + ", Value: " + value);
             IoSignal ioSignal = signalByTopicIdMap.get(value.getId());
-            assignTopicValue(ioSignal, value);
+            if (ioSignal != null) {
+                //topic registered for input, takeover the value, all others are ignored
+                assignTopicValue(ioSignal, value);
+            }
         });
     }
 

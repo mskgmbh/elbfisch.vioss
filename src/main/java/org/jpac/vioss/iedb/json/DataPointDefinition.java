@@ -2,9 +2,11 @@ package org.jpac.vioss.iedb.json;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true) 
 @Data
 public class DataPointDefinition {
     @JsonProperty("accessMode")
