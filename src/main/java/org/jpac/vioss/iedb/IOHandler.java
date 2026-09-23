@@ -93,7 +93,8 @@ public class IOHandler extends org.jpac.vioss.IOHandler implements MqttCallback{
     private final static String  STATUSTAG                      = "/s/";
     private final static String  DATATAG                        = "/d/";
     private final static String  DATAPOINTTAG                   = "/dp/";
-
+    private final static String  UPDATEREQUESTTOPIC             = "ie/c/j/simatic/v1/updaterequest";
+    private final static String  UPDATEREQUESTPATH              = "{\"Path\": \"opcuac1/PLC_S7_1500/default\"}";
     public enum State             {IDLE, CONNECTING, SUBSCRIBING, TRANSCEIVING, CLOSINGCONNECTION, STOPPED};  
     
     private State                 state;
@@ -111,6 +112,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler implements MqttCallback{
     private String                dataTopic;
     private String                pubTopic;
     private String                statusTopic;
+    private String                updateRequestTopic;
     private boolean               metaDataReceived;
     private boolean               awaitingMetadata;
     private MqttMessage           mqttMetaDataMessage;
@@ -124,6 +126,8 @@ public class IOHandler extends org.jpac.vioss.IOHandler implements MqttCallback{
     private ObjectMapper                         objectMapper                 = new ObjectMapper();
         
     public IOHandler(URI uri, SubnodeConfiguration parameterConfiguration) throws IllegalUriException {
+        //example UIR: "ie.db://192.168.0.181:9883/ie/d/j/simatic/v1/opcuac1/dp/msk/automation/byteArray0"
+        //                                        "ie/c/j/simatic/v1/updaterequest";
         super(uri, parameterConfiguration);
         if (!getHandledScheme().equals(uri.getScheme().toUpperCase())){
             JPac.getInstance().unregisterCyclicTask(this);
@@ -470,12 +474,16 @@ public class IOHandler extends org.jpac.vioss.IOHandler implements MqttCallback{
                     dataTopic = parsed.getConnections().get(0).getDataPoints().get(0).getTopic();//assume that there is one connection and one list of data point definitions
                     statusTopic = parsed.getStatusTopic();//assume that there is one connection and one list of data point definitions
                     Log.debug("Pub topic: " + pubTopic + ", Data topic: " + dataTopic + ", Status topic: " + statusTopic);
+                    updateRequestTopic = UPDATEREQUESTTOPIC;//preliminary ?
+                    Log.debug("Update request topic: " + updateRequestTopic);
                 };
                 awaitingMetadata = false;
                 //subscribe to the status topic provided by the industrial edge data broker
                 connection.getMqttClient().subscribe(statusTopic, 1);
                 //subscribe to group data topic provided by the industrial edge data broker
                 connection.getMqttClient().subscribe(dataTopic, 1);
+                //request initial push of data values from the industrial edge data broker
+                connection.getMqttClient().publish(updateRequestTopic, UPDATEREQUESTPATH.getBytes(), 1, false);
                 subscribed = true;
             }
         }
@@ -657,7 +665,7 @@ public class IOHandler extends org.jpac.vioss.IOHandler implements MqttCallback{
             setLastMqttMetaDataMessage(message);
             metaDataReceived = true;
         } else if (topic.equals(dataTopic)){
-            Log.debug("Received MQTT data message: " + message);
+            //Log.debug("Received MQTT data message: " + message);
             setLastMqttDataMessage(message);
             handleDataTopic(message);
         } else if (topic.equals(statusTopic)){
