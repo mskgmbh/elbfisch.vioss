@@ -32,6 +32,8 @@ import java.util.AbstractMap.SimpleImmutableEntry;
 import java.util.stream.Collectors;
 
 import org.jpac.vioss.IoSignal;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.jpac.vioss.IOHandlerFactory;
 import org.jpac.InconsistencyException;
 import org.jpac.Signal;

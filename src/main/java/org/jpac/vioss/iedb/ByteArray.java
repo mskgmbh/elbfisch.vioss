@@ -85,7 +85,7 @@ public class ByteArray extends Generic<byte[]> {
      * @throws org.jpac.SignalInvalidException if the valid is not valid in the case of accessing it.
      */
     public byte[] get() throws SignalInvalidException{
-        return ((ByteArray)getValidatedValue()).get();
+        return ((ByteArrayValue)getValidatedValue()).get();
     }
     
     /**
@@ -96,12 +96,12 @@ public class ByteArray extends Generic<byte[]> {
         setIntrinsicFct(intrinsicFunction);
     }
 
-    // /**
-    //  * returns a process event (CharStringChanges), which is fired, if the char string changes
-    //  */    
-    // public CharStringChanges changes(){
-    //     return new CharStringChanges(this);
-    // }
+    /**
+     * returns a process event (ByteArrayChanges), which is fired, if the byte array changes
+     */    
+    public ByteArrayChanges changes(){
+        return new ByteArrayChanges(this);
+    }
 
     /**
      * used to connect this char string to another char string. One char string can be connected
